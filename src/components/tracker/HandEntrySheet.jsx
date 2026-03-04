@@ -35,13 +35,14 @@ function formatDeltas(deltas, players) {
     .filter(Boolean).join('  ')
 }
 
-export default function HandEntrySheet({ onConfirm, onCancel }) {
-  const { players, dealer, honba, riichiPool, entryMode, updateScores, addLogEntry, advanceAfterWin, setRiichiPool } = useGameStore()
+export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
+  const { players, dealer, honba, riichiPool, entryMode, updateScores, addLogEntry, advanceAfterWin, setRiichiPool, getSnapshot } = useGameStore()
 
   const [winner, setWinner] = useState(null)
   const [isTsumo, setIsTsumo] = useState(true)
   const [discarder, setDiscarder] = useState(null)
-  const [riichis, setRiichis] = useState([false, false, false, false])
+  // Pre-populate from GameScreen riichi markers
+  const [riichis, setRiichis] = useState(riichiFlags ?? [false, false, false, false])
   const [han, setHan] = useState(null)
   const [fu, setFu] = useState(null)
   const [quickPoints, setQuickPoints] = useState(null)
@@ -96,7 +97,9 @@ export default function HandEntrySheet({ onConfirm, onCancel }) {
   function handleConfirm() {
     if (!payment || winner === null) return
 
-    // Apply riichi declarations (1000 per declaring player, added to pool)
+    // Capture pre-hand snapshot for undo BEFORE any score changes
+    const snapshot = getSnapshot()
+
     const riichiDeltas = riichis.map((r) => (r ? -1000 : 0))
     if (riichiDeltas.some((d) => d !== 0)) {
       updateScores(riichiDeltas)
@@ -109,7 +112,7 @@ export default function HandEntrySheet({ onConfirm, onCancel }) {
       ? `${players[winner].name} wins (${isTsumo ? 'tsumo' : `ron from ${players[discarder].name}`}) ${han}han ${fu}fu`
       : `${players[winner].name} wins (${isTsumo ? 'tsumo' : `ron from ${players[discarder].name}`}) ${quickPoints?.toLocaleString()}pts`
 
-    addLogEntry({ label, deltas: payment.deltas, type: 'win' })
+    addLogEntry({ snapshot, label, deltas: payment.deltas, type: 'win' })
     advanceAfterWin({ isDealer: winner === dealer })
     onConfirm()
   }

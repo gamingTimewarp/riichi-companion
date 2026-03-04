@@ -55,9 +55,14 @@ const useGameStore = create(
           })),
         })),
 
-      addLogEntry: (entry) =>
+      // Capture a snapshot of current state — call BEFORE making score changes
+      // so that undo can restore to pre-hand state.
+      getSnapshot: () => makeSnapshot(get()),
+
+      // Entry must include a `snapshot` captured before any score changes.
+      addLogEntry: ({ snapshot, ...entry }) =>
         set((state) => ({
-          log: [...state.log, { ...entry, snapshot: makeSnapshot(state) }],
+          log: [...state.log, { ...entry, snapshot: snapshot ?? makeSnapshot(state) }],
         })),
 
       undoLastEntry: () =>

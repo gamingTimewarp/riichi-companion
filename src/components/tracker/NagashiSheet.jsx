@@ -4,7 +4,7 @@ import { calculateNagashiPayments } from '../../lib/scoring'
 import { getSeatWindName } from '../../lib/scoring'
 
 export default function NagashiSheet({ onConfirm, onCancel }) {
-  const { players, dealer, updateScores, addLogEntry, advanceAfterDraw } = useGameStore()
+  const { players, dealer, updateScores, addLogEntry, advanceAfterDraw, getSnapshot } = useGameStore()
   const [winner, setWinner] = useState(null)
 
   const payment = winner !== null ? calculateNagashiPayments(winner, dealer) : null

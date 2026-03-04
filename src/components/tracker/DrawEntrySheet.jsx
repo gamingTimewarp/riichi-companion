@@ -2,8 +2,12 @@ import { useState, useMemo } from 'react'
 import useGameStore from '../../stores/gameStore'
 import { calculateDrawPayments } from '../../lib/scoring'
 
-export default function DrawEntrySheet({ onConfirm, onCancel }) {
-  const { players, dealer, drawRule, updateScores, addLogEntry, advanceAfterDraw } = useGameStore()
+export default function DrawEntrySheet({ onConfirm, onCancel, riichiFlags }) {
+  const {
+    players, dealer, riichiPool, drawRule,
+    updateScores, addLogEntry, advanceAfterDraw, setRiichiPool, getSnapshot,
+  } = useGameStore()
+
   const [tenpai, setTenpai] = useState([false, false, false, false])
 
   function toggle(i) {
@@ -11,17 +15,37 @@ export default function DrawEntrySheet({ onConfirm, onCancel }) {
   }
 
   const tenpaiIndices = tenpai.map((v, i) => v ? i : -1).filter((i) => i >= 0)
-
-  const { deltas } = useMemo(() => calculateDrawPayments(tenpaiIndices, drawRule), [tenpaiIndices.join(','), drawRule])
+  const { deltas: drawDeltas } = useMemo(
+    () => calculateDrawPayments(tenpaiIndices, drawRule),
+    [tenpaiIndices.join(','), drawRule],
+  )
 
   const dealerTenpai = tenpai[dealer]
 
+  // Riichi sticks from pre-declared markers (GameScreen) — will be deducted + added to pool
+  const riichiCount = (riichiFlags ?? []).filter(Boolean).length
+  const riichiDeltas = (riichiFlags ?? []).map((r) => (r ? -1000 : 0))
+
+  // Combined deltas for preview: riichi deductions + draw payments
+  const combinedDeltas = drawDeltas.map((d, i) => d + (riichiDeltas[i] ?? 0))
+
   function handleConfirm() {
-    updateScores(deltas)
+    const snapshot = getSnapshot()
+
+    // 1. Deduct riichi sticks and add to pool (sticks carry over to next hand)
+    if (riichiCount > 0) {
+      updateScores(riichiDeltas)
+      setRiichiPool(riichiPool + riichiCount)
+    }
+
+    // 2. Apply tenpai/noten draw payments
+    updateScores(drawDeltas)
+
     const label = tenpaiIndices.length === 0
       ? 'Draw — all noten'
       : `Draw — tenpai: ${tenpaiIndices.map((i) => players[i].name).join(', ')}`
-    addLogEntry({ label, deltas, type: 'draw' })
+
+    addLogEntry({ snapshot, label, deltas: combinedDeltas, type: 'draw' })
     advanceAfterDraw({ dealerTenpai })
     onConfirm()
   }
@@ -35,10 +59,25 @@ export default function DrawEntrySheet({ onConfirm, onCancel }) {
 
       <div className="bg-slate-800 rounded-xl p-3 text-xs text-slate-400">
         {drawRule === 'fixed-pool'
-          ? 'Fixed 3000pt pool split among tenpai players; noten players split paying 3000.'
+          ? 'Fixed 3000pt pool split among tenpai; noten players split paying 3000.'
           : 'Each noten player pays 1000pts; tenpai players split the total.'}
         {dealerTenpai && <span className="text-yellow-400 ml-2 font-medium">Dealer tenpai = renchan.</span>}
       </div>
+
+      {/* Pre-declared riichi from GameScreen */}
+      {riichiCount > 0 && (
+        <div className="bg-yellow-900/20 border border-yellow-700 rounded-xl px-4 py-3 text-xs space-y-1">
+          <div className="text-yellow-300 font-semibold">Riichi declarations this hand</div>
+          {(riichiFlags ?? []).map((r, i) => r ? (
+            <div key={i} className="text-yellow-400">
+              {players[i].name} — 立直 stick added to pool (−1,000pts)
+            </div>
+          ) : null)}
+          <div className="text-yellow-500 pt-1">
+            Pool after: {((riichiPool + riichiCount) * 1000).toLocaleString()}pts (carries to next hand)
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Tenpai?</h3>
@@ -52,7 +91,10 @@ export default function DrawEntrySheet({ onConfirm, onCancel }) {
                 : 'bg-slate-800 border-slate-600 text-slate-300'
             }`}
           >
-            <span className="font-medium">{p.name}</span>
+            <span className="font-medium flex items-center gap-2">
+              {p.name}
+              {riichiFlags?.[i] && <span className="text-yellow-400 text-[10px] font-bold">立直</span>}
+            </span>
             <span className="text-sm">
               {tenpai[i] ? 'Tenpai' : 'Noten'}
               {i === dealer && <span className="ml-2 text-xs opacity-70">(dealer)</span>}
@@ -64,15 +106,16 @@ export default function DrawEntrySheet({ onConfirm, onCancel }) {
       {/* Payment preview */}
       <div className="bg-slate-800 rounded-xl p-3 text-xs text-slate-300 space-y-1">
         <div className="font-semibold text-slate-200 mb-1">Payment Preview</div>
-        {deltas.map((d, i) => d !== 0 ? (
-          <div key={i}>
-            {players[i].name}: <span className={d > 0 ? 'text-green-400' : 'text-red-400'}>
+        {combinedDeltas.map((d, i) => d !== 0 ? (
+          <div key={i} className="flex justify-between">
+            <span className="text-slate-400">{players[i].name}</span>
+            <span className={d > 0 ? 'text-green-400' : 'text-red-400'}>
               {d > 0 ? '+' : ''}{d.toLocaleString()}
             </span>
           </div>
         ) : null)}
-        {deltas.every((d) => d === 0) && (
-          <div className="text-slate-500">No payment (all tenpai or all noten)</div>
+        {combinedDeltas.every((d) => d === 0) && (
+          <div className="text-slate-500">No score change (all tenpai or all noten, no riichi)</div>
         )}
       </div>
 

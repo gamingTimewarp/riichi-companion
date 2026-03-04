@@ -50,6 +50,7 @@ export default function TrackerMode() {
       )}
       {screen === 'hand-entry' && (
         <HandEntrySheet
+          riichiFlags={riichiFlags}
           onConfirm={() => {
             resetRiichi()
             const { round, gameType } = useGameStore.getState()
@@ -60,6 +61,7 @@ export default function TrackerMode() {
       )}
       {screen === 'draw-entry' && (
         <DrawEntrySheet
+          riichiFlags={riichiFlags}
           onConfirm={() => {
             resetRiichi()
             const { round, gameType } = useGameStore.getState()
