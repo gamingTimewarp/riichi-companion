@@ -168,3 +168,77 @@ export function tilesToNotation(tiles) {
 export function tilesToRiichiInts(tiles) {
   return tiles.map(tileToRiichi).sort((a, b) => a - b)
 }
+
+/**
+ * Convert a tile object to its Unicode mahjong character.
+ * Unicode mahjong block U+1F000–U+1F02B.
+ */
+export function tileToUnicode(tile) {
+  const v = tile.value // 1–9 (aka already maps to value=5)
+  if (tile.suit === 'm') return String.fromCodePoint(0x1F007 + (v - 1))
+  if (tile.suit === 'p') return String.fromCodePoint(0x1F019 + (v - 1))
+  if (tile.suit === 's') return String.fromCodePoint(0x1F010 + (v - 1))
+  // Honors: 1z=East 2z=South 3z=West 4z=North 5z=Haku 6z=Hatsu 7z=Chun
+  const zCodes = [0x1F000, 0x1F001, 0x1F002, 0x1F003, 0x1F006, 0x1F005, 0x1F004]
+  return String.fromCodePoint(zCodes[v - 1])
+}
+
+/**
+ * Given a riichi-ts integer tile id, return a minimal tile object.
+ */
+export function riichiIntToTile(id) {
+  if (id <= 8) return { suit: 'm', value: id + 1, isAka: false }
+  if (id <= 17) return { suit: 'p', value: id - 8, isAka: false }
+  if (id <= 26) return { suit: 's', value: id - 17, isAka: false }
+  return { suit: 'z', value: id - 26, isAka: false }
+}
+
+/**
+ * Given a dora indicator TileObject, return the riichi-ts integer for the actual dora tile.
+ * Sequences: numbered 1→2→…→9→1, winds E→S→W→N→E, dragons Haku→Hatsu→Chun→Haku.
+ */
+export function indicatorToDoraInt(tile) {
+  if (tile.suit === 'z') {
+    if (tile.value <= 4) {
+      // Winds: East(1)→South(2)→West(3)→North(4)→East(1)
+      return 27 + (tile.value % 4)
+    } else {
+      // Dragons: Haku(5)→Hatsu(6)→Chun(7)→Haku(5)
+      return 31 + ((tile.value - 5 + 1) % 3)
+    }
+  }
+  // Numbered: 1→2, …, 8→9, 9→1
+  const nextVal = tile.value === 9 ? 1 : tile.value + 1
+  return tileToRiichi({ suit: tile.suit, value: nextVal, isAka: false })
+}
+
+/**
+ * All picker rows: number suits include aka-5 at end, honors are separate.
+ */
+export const PICKER_ROWS = [
+  {
+    suit: 'm',
+    tiles: [
+      ...Array.from({ length: 9 }, (_, i) => ({ suit: 'm', value: i + 1, isAka: false })),
+      { suit: 'm', value: 5, isAka: true },
+    ],
+  },
+  {
+    suit: 'p',
+    tiles: [
+      ...Array.from({ length: 9 }, (_, i) => ({ suit: 'p', value: i + 1, isAka: false })),
+      { suit: 'p', value: 5, isAka: true },
+    ],
+  },
+  {
+    suit: 's',
+    tiles: [
+      ...Array.from({ length: 9 }, (_, i) => ({ suit: 's', value: i + 1, isAka: false })),
+      { suit: 's', value: 5, isAka: true },
+    ],
+  },
+  {
+    suit: 'z',
+    tiles: Array.from({ length: 7 }, (_, i) => ({ suit: 'z', value: i + 1, isAka: false })),
+  },
+]
