@@ -4,7 +4,20 @@ import { getRoundName, getSeatWindName, shouldGameEnd } from '../../lib/scoring'
 
 const WIND_CHARS = { East: '東', South: '南', West: '西', North: '北' }
 
-function ScoreRow({ player, seatWind, hasRiichi, onToggleRiichi }) {
+const RETURN = 30000
+
+function formatScore(score, relative) {
+  if (!relative) return score.toLocaleString()
+  const diff = score - RETURN
+  const sign = diff >= 0 ? '+' : ''
+  // Show in thousands with one decimal if non-zero fractional part
+  const k = diff / 1000
+  return `${sign}${Number.isInteger(k) ? k : k.toFixed(1)}k`
+}
+
+function ScoreRow({ player, seatWind, hasRiichi, onToggleRiichi, relative }) {
+  const diff = player.score - RETURN
+  const isNeg = diff < 0
   return (
     <div
       className={`flex items-center gap-3 py-3 border-b border-slate-700 last:border-0 cursor-pointer select-none transition-colors ${hasRiichi ? 'bg-yellow-900/10' : 'hover:bg-slate-700/30'}`}
@@ -20,8 +33,8 @@ function ScoreRow({ player, seatWind, hasRiichi, onToggleRiichi }) {
       {hasRiichi && (
         <span className="text-yellow-400 text-xs font-bold tracking-wide">立直</span>
       )}
-      <div className={`text-lg font-bold tabular-nums ${player.score < 0 ? 'text-red-400' : 'text-slate-100'}`}>
-        {player.score.toLocaleString()}
+      <div className={`text-lg font-bold tabular-nums ${relative ? (isNeg ? 'text-red-400' : diff > 0 ? 'text-green-400' : 'text-slate-400') : (player.score < 0 ? 'text-red-400' : 'text-slate-100')}`}>
+        {formatScore(player.score, relative)}
       </div>
     </div>
   )
@@ -58,8 +71,9 @@ function LogEntry({ entry, players, isLast, onUndo }) {
 export default function GameScreen({ onHandEntry, onDrawEntry, onNagashi, onChombo, onWallDice, onEndGame, riichiFlags, onToggleRiichi }) {
   const { players, dealer, round, honba, riichiPool, log, gameType, entryMode, undoLastEntry, setEntryMode } = useGameStore()
   const [logOpen, setLogOpen] = useState(false)
-  const [moreOpen, setMoreOpen] = useState(false)   // #5: collapsible secondary actions
-  const [confirmEnd, setConfirmEnd] = useState(false) // #3: early-end confirmation
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [confirmEnd, setConfirmEnd] = useState(false)
+  const [relativeScore, setRelativeScore] = useState(false)
 
   const gameOver = shouldGameEnd(round, gameType)
 
@@ -84,23 +98,30 @@ export default function GameScreen({ onHandEntry, onDrawEntry, onNagashi, onChom
       </div>
 
       {/* Scoreboard — tap a row to toggle riichi */}
-      <div className="bg-slate-800 rounded-2xl px-4 divide-y divide-slate-700">
-        {players.map((p, i) => (
-          <ScoreRow
-            key={i}
-            player={p}
-            seatWind={getSeatWindName(i, dealer)}
-            hasRiichi={riichiFlags?.[i] ?? false}
-            onToggleRiichi={() => onToggleRiichi?.(i)}
-          />
-        ))}
+      <div className="bg-slate-800 rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-4 pt-2 pb-1">
+          <span className="text-xs text-slate-500">Scores</span>
+          <button
+            onClick={() => setRelativeScore((v) => !v)}
+            className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            {relativeScore ? 'Showing ±30k' : 'Showing absolute'} · switch
+          </button>
+        </div>
+        <div className="px-4 divide-y divide-slate-700">
+          {players.map((p, i) => (
+            <ScoreRow
+              key={i}
+              player={p}
+              seatWind={getSeatWindName(i, dealer)}
+              hasRiichi={riichiFlags?.[i] ?? false}
+              onToggleRiichi={() => onToggleRiichi?.(i)}
+              relative={relativeScore}
+            />
+          ))}
+        </div>
       </div>
-      {riichiFlags?.some(Boolean) && (
-        <p className="text-[11px] text-slate-600 -mt-2 text-center">Tap a player row to toggle riichi</p>
-      )}
-      {!riichiFlags?.some(Boolean) && (
-        <p className="text-[11px] text-slate-700 -mt-2 text-center">Tap a player row to mark riichi</p>
-      )}
+      <p className="text-[11px] text-slate-700 -mt-2 text-center">Tap a row to mark/unmark riichi</p>
 
       {/* #5: Primary action buttons */}
       <div className="grid grid-cols-2 gap-3">
