@@ -4,10 +4,14 @@ import { getRoundName, getSeatWindName, shouldGameEnd } from '../../lib/scoring'
 
 const WIND_CHARS = { East: '東', South: '南', West: '西', North: '北' }
 
-function ScoreRow({ player, seatWind, hasRiichi }) {
+function ScoreRow({ player, seatWind, hasRiichi, onToggleRiichi }) {
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-slate-700 last:border-0">
-      <div className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-700 text-sm font-bold text-slate-200">
+    <div
+      className={`flex items-center gap-3 py-3 border-b border-slate-700 last:border-0 cursor-pointer select-none transition-colors ${hasRiichi ? 'bg-yellow-900/10' : 'hover:bg-slate-700/30'}`}
+      onClick={onToggleRiichi}
+      title="Tap to toggle riichi"
+    >
+      <div className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold transition-colors ${hasRiichi ? 'bg-yellow-700 text-white' : 'bg-slate-700 text-slate-200'}`}>
         {WIND_CHARS[seatWind]}
       </div>
       <div className="flex-1 min-w-0">
@@ -51,7 +55,7 @@ function LogEntry({ entry, players, isLast, onUndo }) {
   )
 }
 
-export default function GameScreen({ onHandEntry, onDrawEntry, onNagashi, onChombo, onWallDice, onEndGame, riichiFlags }) {
+export default function GameScreen({ onHandEntry, onDrawEntry, onNagashi, onChombo, onWallDice, onEndGame, riichiFlags, onToggleRiichi }) {
   const { players, dealer, round, honba, riichiPool, log, gameType, entryMode, undoLastEntry, setEntryMode } = useGameStore()
   const [logOpen, setLogOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)   // #5: collapsible secondary actions
@@ -79,7 +83,7 @@ export default function GameScreen({ onHandEntry, onDrawEntry, onNagashi, onChom
         <span className="ml-auto text-slate-500 text-xs">{gameType === 'hanchan' ? 'Hanchan' : 'Tonpuusen'}</span>
       </div>
 
-      {/* Scoreboard */}
+      {/* Scoreboard — tap a row to toggle riichi */}
       <div className="bg-slate-800 rounded-2xl px-4 divide-y divide-slate-700">
         {players.map((p, i) => (
           <ScoreRow
@@ -87,9 +91,16 @@ export default function GameScreen({ onHandEntry, onDrawEntry, onNagashi, onChom
             player={p}
             seatWind={getSeatWindName(i, dealer)}
             hasRiichi={riichiFlags?.[i] ?? false}
+            onToggleRiichi={() => onToggleRiichi?.(i)}
           />
         ))}
       </div>
+      {riichiFlags?.some(Boolean) && (
+        <p className="text-[11px] text-slate-600 -mt-2 text-center">Tap a player row to toggle riichi</p>
+      )}
+      {!riichiFlags?.some(Boolean) && (
+        <p className="text-[11px] text-slate-700 -mt-2 text-center">Tap a player row to mark riichi</p>
+      )}
 
       {/* #5: Primary action buttons */}
       <div className="grid grid-cols-2 gap-3">

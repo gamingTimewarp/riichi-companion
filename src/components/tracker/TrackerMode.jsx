@@ -17,6 +17,12 @@ export default function TrackerMode() {
   const initialScreen = gameActive ? (gameOver ? 'end' : 'game') : 'setup'
   const [screen, setScreen] = useState(initialScreen)
 
+  // Per-hand riichi tracking: survives wall-dice navigation, resets after hand/draw
+  const [riichiFlags, setRiichiFlags] = useState([false, false, false, false])
+  const resetRiichi = () => setRiichiFlags([false, false, false, false])
+  const toggleRiichi = (i) =>
+    setRiichiFlags((prev) => { const n = [...prev]; n[i] = !n[i]; return n })
+
   return (
     <div>
       {screen === 'setup' && (
@@ -38,11 +44,14 @@ export default function TrackerMode() {
           onChombo={() => setScreen('chombo')}
           onWallDice={() => setScreen('wall-dice')}
           onEndGame={() => setScreen('end')}
+          riichiFlags={riichiFlags}
+          onToggleRiichi={toggleRiichi}
         />
       )}
       {screen === 'hand-entry' && (
         <HandEntrySheet
           onConfirm={() => {
+            resetRiichi()
             const { round, gameType } = useGameStore.getState()
             setScreen(shouldGameEnd(round, gameType) ? 'end' : 'game')
           }}
@@ -52,6 +61,7 @@ export default function TrackerMode() {
       {screen === 'draw-entry' && (
         <DrawEntrySheet
           onConfirm={() => {
+            resetRiichi()
             const { round, gameType } = useGameStore.getState()
             setScreen(shouldGameEnd(round, gameType) ? 'end' : 'game')
           }}
@@ -67,6 +77,7 @@ export default function TrackerMode() {
       {screen === 'nagashi' && (
         <NagashiSheet
           onConfirm={() => {
+            resetRiichi()
             const { round, gameType } = useGameStore.getState()
             setScreen(shouldGameEnd(round, gameType) ? 'end' : 'game')
           }}
