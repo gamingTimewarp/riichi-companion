@@ -9,6 +9,11 @@ The app follows **EMA (European Mahjong Association)** rules: open tanyao (kuita
 ## Table of Contents
 
 1. [Installation & Setup](#installation--setup)
+   - [Linux](#linux)
+   - [Windows](#windows)
+   - [Android](#android)
+   - [PWA](#pwa-any-platform)
+   - [Local Development](#local-development)
 2. [Hand Analyzer](#hand-analyzer)
    - [Building a Hand](#building-a-hand)
    - [Open Melds](#open-melds)
@@ -38,13 +43,70 @@ The app follows **EMA (European Mahjong Association)** rules: open tanyao (kuita
 
 ## Installation & Setup
 
-Riichi Companion is a PWA and can be installed directly from the browser:
+Download the latest release from the [Releases page](https://github.com/gamingTimewarp/riichi-companion/releases). Each release includes packages for all supported platforms.
 
-1. Open the app URL in a mobile browser (Chrome on Android, Safari on iOS).
-2. Use the browser's "Add to Home Screen" option.
-3. The app will open in standalone mode (no browser chrome) and work offline.
+---
 
-For local development:
+### Linux
+
+Two formats are provided. Use whichever matches your distribution.
+
+**RPM (Fedora, openSUSE, RHEL, etc.)**
+```bash
+sudo dnf install "Riichi Companion-1.0.0-1.x86_64.rpm"
+```
+
+**DEB (Ubuntu, Debian, Mint, etc.)**
+```bash
+sudo apt install "./Riichi Companion_1.0.0_amd64.deb"
+```
+
+**AppImage (any distribution)**
+
+AppImage runs without installation. Download the `.AppImage` file, make it executable, and run it:
+```bash
+chmod +x "Riichi Companion_1.0.0_amd64.AppImage"
+./"Riichi Companion_1.0.0_amd64.AppImage"
+```
+
+> **Note for Fedora/SELinux users:** If the AppImage fails to launch, set `APPIMAGE_EXTRACT_AND_RUN=1` in your environment (add it to `~/.bashrc`) and try again.
+
+---
+
+### Windows
+
+Download and run the `.exe` installer (`Riichi Companion_1.0.0_x64-setup.exe`). Follow the installer prompts — the app will appear in your Start Menu after installation.
+
+An `.msi` package is also available for managed/enterprise deployments.
+
+---
+
+### Android
+
+Download the `.apk` file and open it on your Android device. You may need to allow installation from unknown sources:
+
+1. Transfer the APK to your device (or download directly in a browser).
+2. Open the APK file.
+3. If prompted, go to **Settings → Install unknown apps** and allow your browser or file manager to install APKs.
+4. Tap **Install**.
+
+The app will appear in your launcher as **Riichi Companion**.
+
+> The APK is unsigned (sideload only). A Play Store release may follow in a future version.
+
+---
+
+### PWA (any platform)
+
+Riichi Companion can also be installed as a Progressive Web App directly from the browser — no app store or package required:
+
+1. Open the app URL in a browser (Chrome on Android/desktop, Safari on iOS).
+2. Use the browser's **Add to Home Screen** or **Install app** option.
+3. The app opens in standalone mode and works offline.
+
+---
+
+### Local Development
 
 ```bash
 npm install
