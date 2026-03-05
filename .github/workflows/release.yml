@@ -66,10 +66,21 @@ jobs:
       - run: npm run tauri:android
         env:
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/29.0.14206865
+      - name: Sign APK
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 -d > /tmp/release.keystore
+          BUILD_TOOLS=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)
+          $BUILD_TOOLS/apksigner sign \
+            --ks /tmp/release.keystore \
+            --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}" \
+            --ks-pass pass:"${{ secrets.ANDROID_STORE_PASSWORD }}" \
+            --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}" \
+            --out src-tauri/gen/android/app/build/outputs/apk/universal/release/riichi-companion.apk \
+            src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
       - uses: actions/upload-artifact@v4
         with:
           name: android-bundles
-          path: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
+          path: src-tauri/gen/android/app/build/outputs/apk/universal/release/riichi-companion.apk
 
   publish-release:
     needs: [build-linux, build-windows, build-android]
