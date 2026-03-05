@@ -1,10 +1,16 @@
 import { create } from 'zustand'
 
+const makePlayerDiscards = () =>
+  Array.from({ length: 4 }, () => ({ tiles: [], anyClaimed: false }))
+
 const useHandStore = create((set) => ({
-  tiles: [],           // TileObject[] — closed hand tiles
-  melds: [],           // { open: boolean, tiles: TileObject[] }[]
-  discards: [],        // TileObject[]
+  tiles: [],            // TileObject[] — closed hand tiles
+  melds: [],            // { open: boolean, tiles: TileObject[] }[]
   analysisResult: null, // result from analysis.js
+
+  // Per-player discard tracking: 4 entries, each { tiles: TileObject[], anyClaimed: boolean }
+  // Player 0 = "You" (the hand being analysed). Used for furiten + nagashi detection.
+  playerDiscards: makePlayerDiscards(),
 
   setTiles: (tiles) => set({ tiles, analysisResult: null }),
   addTile: (tile) =>
@@ -21,9 +27,40 @@ const useHandStore = create((set) => ({
       melds: state.melds.filter((_, i) => i !== index),
       analysisResult: null,
     })),
-  clearHand: () => set({ tiles: [], melds: [], discards: [], analysisResult: null }),
+  clearHand: () => set({ tiles: [], melds: [], playerDiscards: makePlayerDiscards(), analysisResult: null }),
   setAnalysisResult: (result) => set({ analysisResult: result }),
-  setDiscards: (discards) => set({ discards }),
+
+  addDiscard: (playerIdx, tile) =>
+    set((state) => {
+      const pd = state.playerDiscards.map((p, i) =>
+        i === playerIdx ? { ...p, tiles: [...p.tiles, tile] } : p
+      )
+      return { playerDiscards: pd }
+    }),
+
+  removeDiscard: (playerIdx, tileIdx) =>
+    set((state) => {
+      const pd = state.playerDiscards.map((p, i) =>
+        i === playerIdx ? { ...p, tiles: p.tiles.filter((_, ti) => ti !== tileIdx) } : p
+      )
+      return { playerDiscards: pd }
+    }),
+
+  setAnyClaimed: (playerIdx, val) =>
+    set((state) => {
+      const pd = state.playerDiscards.map((p, i) =>
+        i === playerIdx ? { ...p, anyClaimed: val } : p
+      )
+      return { playerDiscards: pd }
+    }),
+
+  clearPlayerDiscards: (playerIdx) =>
+    set((state) => {
+      const pd = state.playerDiscards.map((p, i) =>
+        i === playerIdx ? { tiles: [], anyClaimed: false } : p
+      )
+      return { playerDiscards: pd }
+    }),
 }))
 
 export default useHandStore

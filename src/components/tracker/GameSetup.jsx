@@ -3,13 +3,18 @@ import useGameStore from '../../stores/gameStore'
 
 export default function GameSetup({ onStart }) {
   const startGame = useGameStore((s) => s.startGame)
+  const [numPlayers, setNumPlayers] = useState(4)
   const [names, setNames] = useState(['Player 1', 'Player 2', 'Player 3', 'Player 4'])
   const [gameType, setGameType] = useState('hanchan')
   const [entryMode, setEntryMode] = useState('detailed')
   const [drawRule, setDrawRule] = useState('fixed-pool')
 
+  function handleNumPlayers(n) {
+    setNumPlayers(n)
+  }
+
   function handleStart() {
-    startGame(names, gameType, entryMode, drawRule)
+    startGame(names.slice(0, numPlayers), gameType, entryMode, drawRule, numPlayers)
     onStart()
   }
 
@@ -17,10 +22,34 @@ export default function GameSetup({ onStart }) {
     <div className="px-4 py-6 space-y-6 max-w-md mx-auto">
       <h2 className="text-xl font-bold text-slate-100">New Game</h2>
 
+      {/* Player count */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Player Count</h3>
+        <div className="flex gap-2">
+          {[
+            { value: 4, label: '4 Players', sub: 'Yonma' },
+            { value: 3, label: '3 Players', sub: 'Sanma' },
+          ].map(({ value, label, sub }) => (
+            <button
+              key={value}
+              onClick={() => handleNumPlayers(value)}
+              className={`flex-1 py-3 px-2 rounded-lg border text-sm font-medium transition-colors ${
+                numPlayers === value
+                  ? 'bg-sky-700 border-sky-500 text-white'
+                  : 'bg-slate-800 border-slate-600 text-slate-300'
+              }`}
+            >
+              <div>{label}</div>
+              <div className="text-xs opacity-70">{sub}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Player names */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Players</h3>
-        {names.map((name, i) => (
+        {names.slice(0, numPlayers).map((name, i) => (
           <div key={i} className="flex items-center gap-3">
             <span className="text-slate-500 text-sm w-6">{i + 1}.</span>
             <input

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import useHandStore from '../../stores/handStore.js'
 import useProfileStore from '../../stores/profileStore.js'
 import { analyseHand } from '../../lib/analysis.js'
-import { TILE_TYPES, tileToUnicode } from '../../lib/tiles.js'
+import { TILE_TYPES, tileToUnicode, riichiIntToTile } from '../../lib/tiles.js'
 import HandDisplay from '../hand/HandDisplay.jsx'
 import TextNotationInput from '../hand/TextNotationInput.jsx'
 import TilePicker from '../tiles/TilePicker.jsx'
@@ -10,6 +10,8 @@ import WaitDisplay from './WaitDisplay.jsx'
 import YakuList from './YakuList.jsx'
 import ScorePanel from './ScorePanel.jsx'
 import MeldEntry from './MeldEntry.jsx'
+import DiscardTracker from './DiscardTracker.jsx'
+import { tileToRiichi } from '../../lib/tiles.js'
 
 // ── Shanten status badge ──────────────────────────────────────────────────────
 
@@ -246,6 +248,7 @@ export default function AnalyzerMode() {
     tiles, addTile, removeTile, setTiles, clearHand,
     melds, addMeld, removeMeld,
     analysisResult, setAnalysisResult,
+    playerDiscards,
   } = useHandStore()
   const { mode } = useProfileStore()
 
@@ -280,6 +283,17 @@ export default function AnalyzerMode() {
   const isComplete = shanten === -1
   const isTenpai   = shanten === 0
   const totalTiles = tiles.length + melds.length * 3
+
+  // Furiten: any of "Your" (player 0) discards match a current wait tile
+  const yourDiscardInts = new Set(playerDiscards[0].tiles.map(tileToRiichi))
+  const furitenInts = isTenpai && result?.waits
+    ? new Set(result.waits.filter((w) => yourDiscardInts.has(w)))
+    : new Set()
+
+  // Ron furiten: 14-tile hand analyzed as ron where the claimed tile is in own discards
+  const isRon = !winOpts.tsumo && totalTiles >= 14
+  const ronTileInt = isRon && tiles.length > 0 ? tileToRiichi(tiles[tiles.length - 1]) : null
+  const isRonFuriten = isRon && ronTileInt !== null && yourDiscardInts.has(ronTileInt)
 
   function switchTo(m) {
     if (m === 'text') setTextKey((k) => k + 1)
@@ -376,6 +390,11 @@ export default function AnalyzerMode() {
         </div>
       )}
 
+      {/* Discard tracking — always visible once tiles are entered */}
+      {totalTiles > 0 && (
+        <DiscardTracker waits={result?.waits ?? []} />
+      )}
+
       {/* Open melds section — always visible */}
       <div>
         <MeldEntry
@@ -423,11 +442,12 @@ export default function AnalyzerMode() {
           onReveal={() => setRevealed(true)}
           doraIndicators={winOpts.doraIndicators}
           uraIndicators={winOpts.riichi ? winOpts.uraIndicators : []}
+          furitenInts={furitenInts}
         />
       )}
 
       {/* Complete hand: yaku + score */}
-      {result && isComplete && result.isAgari && !result.noYaku && (
+      {result && isComplete && result.isAgari && !result.noYaku && !isRonFuriten && (
         <>
           <YakuList yaku={result.yaku} yakuman={result.yakuman} />
           <ScorePanel
@@ -437,8 +457,40 @@ export default function AnalyzerMode() {
             outgoingTen={result.outgoingTen}
             isTsumo={winOpts.tsumo}
             fuBreakdown={result?.fuBreakdown}
+            yakuman={result.yakuman ?? 0}
           />
         </>
+      )}
+
+      {/* Furiten: discard-based (tenpai but a wait is in your own discards) */}
+      {furitenInts.size > 0 && (
+        <div className="rounded-lg border border-rose-800 bg-rose-900/20 px-3 py-2 text-sm text-rose-400">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold">Furiten</span>
+            <span className="text-rose-200 text-base tracking-wide">
+              {[...furitenInts].map((w) => tileToUnicode(riichiIntToTile(w))).join('')}
+            </span>
+            <span>{furitenInts.size === 1 ? 'is' : 'are'} in your discards — ron blocked; tsumo only.</span>
+          </div>
+        </div>
+      )}
+
+      {/* Furiten: ron tile is in own discards (complete 14-tile ron hand) */}
+      {isRonFuriten && (
+        <div className="rounded-lg border border-rose-800 bg-rose-900/20 px-3 py-2 text-sm text-rose-400">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold">Invalid ron — furiten</span>
+            <span className="text-rose-200 text-base">{tileToUnicode(riichiIntToTile(ronTileInt))}</span>
+            <span>is in your discard pile. Switch to tsumo or remove that tile.</span>
+          </div>
+        </div>
+      )}
+
+      {/* 14-tile tenpai shape that isn't a winning hand */}
+      {result && totalTiles >= 14 && !result.isAgari && isTenpai && furitenInts.size === 0 && (
+        <div className="rounded-lg border border-rose-800 bg-rose-900/20 px-3 py-2 text-sm text-rose-400">
+          Tenpai shape — but this tile doesn't complete the hand. Possible furiten, or try a different winning tile.
+        </div>
       )}
 
       {/* Complete shape but no valid yaku */}

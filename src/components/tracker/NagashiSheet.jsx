@@ -4,15 +4,17 @@ import { calculateNagashiPayments } from '../../lib/scoring'
 import { getSeatWindName } from '../../lib/scoring'
 
 export default function NagashiSheet({ onConfirm, onCancel }) {
-  const { players, dealer, updateScores, addLogEntry, advanceAfterDraw, getSnapshot } = useGameStore()
+  const { players, dealer, numPlayers, updateScores, addLogEntry, advanceAfterDraw, getSnapshot } = useGameStore()
   const [winner, setWinner] = useState(null)
 
-  const payment = winner !== null ? calculateNagashiPayments(winner, dealer) : null
+  const payment = winner !== null ? calculateNagashiPayments(winner, dealer, numPlayers) : null
 
   function handleConfirm() {
     if (payment === null) return
+    const snapshot = getSnapshot()
     updateScores(payment.deltas)
     addLogEntry({
+      snapshot,
       label: `Nagashi Mangan — ${players[winner].name}`,
       deltas: payment.deltas,
       type: 'nagashi',
@@ -47,7 +49,7 @@ export default function NagashiSheet({ onConfirm, onCancel }) {
             }`}
           >
             <span className="font-medium">{p.name}</span>
-            <span className="text-xs text-slate-500">{getSeatWindName(i, dealer)}</span>
+            <span className="text-xs text-slate-500">{getSeatWindName(i, dealer, numPlayers)}</span>
           </button>
         ))}
       </div>

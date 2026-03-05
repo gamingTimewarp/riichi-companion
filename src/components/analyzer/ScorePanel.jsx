@@ -1,4 +1,7 @@
-function hanLabel(han) {
+function hanLabel(han, yakuman) {
+  if (yakuman >= 2) return 'Double Yakuman'
+  if (yakuman >= 1) return 'Yakuman'
+  if (han >= 26) return 'Double Yakuman'
   if (han >= 13) return 'Kazoe Yakuman'
   if (han >= 11) return 'Sanbaiman'
   if (han >= 8)  return 'Baiman'
@@ -22,9 +25,9 @@ function pts(n) {
  *   isTsumo      — boolean
  *   fuBreakdown  — { items: [{label, fu}], fu: number, rawFu?: number } | null
  */
-export default function ScorePanel({ han, fu, ten, outgoingTen, isTsumo, fuBreakdown }) {
+export default function ScorePanel({ han, fu, ten, outgoingTen, isTsumo, fuBreakdown, yakuman = 0 }) {
   if (!han && !ten) return null
-  const isLimit = han >= 5
+  const isLimit = han >= 5 || yakuman > 0
 
   return (
     <div className="rounded-lg border border-sky-800 bg-slate-800/60 p-3 flex flex-col gap-3">
@@ -32,8 +35,8 @@ export default function ScorePanel({ han, fu, ten, outgoingTen, isTsumo, fuBreak
 
       {/* Han + Fu + win type badges */}
       <div className="flex gap-2 flex-wrap">
-        <span className="px-2 py-1 rounded bg-sky-900/50 text-sky-300 text-sm font-mono font-semibold">
-          {hanLabel(han)}
+        <span className={`px-2 py-1 rounded text-sm font-mono font-semibold ${yakuman >= 1 ? 'bg-amber-900/50 text-amber-300' : 'bg-sky-900/50 text-sky-300'}`}>
+          {hanLabel(han, yakuman)}
         </span>
         {!isLimit && fu > 0 && (
           <span className="px-2 py-1 rounded bg-slate-700 text-slate-300 text-sm font-mono">

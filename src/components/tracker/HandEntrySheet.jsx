@@ -3,8 +3,11 @@ import useGameStore from '../../stores/gameStore'
 import { calculatePayments } from '../../lib/scoring'
 
 const FU_OPTIONS = [20, 25, 30, 40, 50, 60, 70, 80, 90, 100, 110]
-const HAN_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-const QUICK_POINTS = [1000, 1500, 2000, 2900, 3900, 4000, 5800, 7700, 8000, 11600, 12000, 16000, 24000, 32000, 48000]
+const HAN_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 26]
+const HAN_LABEL = { 13: '13 (Yakuman)', 26: '26 (Double)' }
+const QUICK_POINTS = [1000, 1500, 2000, 2900, 3900, 4000, 5800, 7700, 8000, 11600, 12000, 16000, 24000, 32000, 48000, 64000]
+
+const isRiichiDeclared = (r) => r === 'riichi' || r === 'double'
 
 function PlayerBtn({ player, selected, onClick, color = 'sky' }) {
   const colors = {
@@ -36,22 +39,27 @@ function formatDeltas(deltas, players) {
 }
 
 export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
-  const { players, dealer, honba, riichiPool, entryMode, updateScores, addLogEntry, advanceAfterWin, setRiichiPool, getSnapshot } = useGameStore()
+  const { players, dealer, honba, riichiPool, entryMode, numPlayers, updateScores, addLogEntry, advanceAfterWin, setRiichiPool, getSnapshot } = useGameStore()
 
   const [winner, setWinner] = useState(null)
   const [isTsumo, setIsTsumo] = useState(true)
   const [discarder, setDiscarder] = useState(null)
-  // Pre-populate from GameScreen riichi markers
-  const [riichis, setRiichis] = useState(riichiFlags ?? [false, false, false, false])
+  // Pre-populate from GameScreen riichi markers ('none'|'riichi'|'double')
+  const [riichis, setRiichis] = useState(riichiFlags ?? players.map(() => 'none'))
   const [han, setHan] = useState(null)
   const [fu, setFu] = useState(null)
   const [quickPoints, setQuickPoints] = useState(null)
 
-  function toggleRiichi(i) {
-    setRiichis((prev) => { const n = [...prev]; n[i] = !n[i]; return n })
+  function cycleRiichi(i) {
+    setRiichis((prev) => {
+      const n = [...prev]
+      const curr = n[i]
+      n[i] = isRiichiDeclared(curr) ? (curr === 'riichi' ? 'double' : 'none') : 'riichi'
+      return n
+    })
   }
 
-  const riichiSticks = riichis.filter(Boolean).length
+  const riichiSticks = riichis.filter(isRiichiDeclared).length
   const effectivePool = riichiPool + riichiSticks
 
   const payment = useMemo(() => {
@@ -66,17 +74,20 @@ export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
         dealerIndex: dealer,
         honba,
         riichiPool: effectivePool,
+        numPlayers,
       })
     } else {
       if (quickPoints === null) return null
       if (!isTsumo && discarder === null) return null
-      const deltas = [0, 0, 0, 0]
+      const deltas = new Array(numPlayers).fill(0)
       if (isTsumo) {
-        // Distribute tsumo: approximate split (just use point value as total)
+        // Distribute tsumo proportionally (approximate split)
         const isWinnerDealer = winner === dealer
-        const dealerPay = isWinnerDealer ? Math.ceil(quickPoints / 3 / 100) * 100 : quickPoints / 2
-        const nonDealerPay = isWinnerDealer ? dealerPay : Math.ceil(quickPoints / 4 / 100) * 100
-        for (let i = 0; i < 4; i++) {
+        const dealerPay = isWinnerDealer
+          ? Math.ceil(quickPoints / (numPlayers - 1) / 100) * 100
+          : Math.ceil(quickPoints * 2 / numPlayers / 100) * 100
+        const nonDealerPay = isWinnerDealer ? dealerPay : Math.ceil(quickPoints / numPlayers / 100) * 100
+        for (let i = 0; i < numPlayers; i++) {
           if (i === winner) continue
           const pay = (i === dealer || isWinnerDealer) ? dealerPay : nonDealerPay
           deltas[i] -= pay
@@ -86,10 +97,10 @@ export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
         deltas[discarder] -= quickPoints
         deltas[winner] += quickPoints
       }
-      const honbaBonus = honba * (isTsumo ? 300 : 300)
+      const honbaBonus = honba * 100 * (numPlayers - 1)
       deltas[winner] += honbaBonus + effectivePool * 1000
       if (!isTsumo) deltas[discarder] -= honbaBonus
-      else { for (let i = 0; i < 4; i++) { if (i !== winner) deltas[i] -= honba * 100 } }
+      else { for (let i = 0; i < numPlayers; i++) { if (i !== winner) deltas[i] -= honba * 100 } }
       return { deltas }
     }
   }, [winner, isTsumo, discarder, han, fu, quickPoints, honba, effectivePool, dealer, entryMode])
@@ -100,7 +111,7 @@ export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
     // Capture pre-hand snapshot for undo BEFORE any score changes
     const snapshot = getSnapshot()
 
-    const riichiDeltas = riichis.map((r) => (r ? -1000 : 0))
+    const riichiDeltas = riichis.map((r) => (isRiichiDeclared(r) ? -1000 : 0))
     if (riichiDeltas.some((d) => d !== 0)) {
       updateScores(riichiDeltas)
     }
@@ -108,9 +119,12 @@ export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
     updateScores(payment.deltas)
     setRiichiPool(0)
 
+    const doubleRiichiNote = riichis.some(r => r === 'double')
+      ? ` [2立: ${riichis.map((r, i) => r === 'double' ? players[i].name : null).filter(Boolean).join(', ')}]`
+      : ''
     const label = entryMode === 'detailed'
-      ? `${players[winner].name} wins (${isTsumo ? 'tsumo' : `ron from ${players[discarder].name}`}) ${han}han ${fu}fu`
-      : `${players[winner].name} wins (${isTsumo ? 'tsumo' : `ron from ${players[discarder].name}`}) ${quickPoints?.toLocaleString()}pts`
+      ? `${players[winner].name} wins (${isTsumo ? 'tsumo' : `ron from ${players[discarder].name}`}) ${han === 26 ? 'Double Yakuman' : `${han}han ${fu}fu`}${doubleRiichiNote}`
+      : `${players[winner].name} wins (${isTsumo ? 'tsumo' : `ron from ${players[discarder].name}`}) ${quickPoints?.toLocaleString()}pts${doubleRiichiNote}`
 
     addLogEntry({ snapshot, label, deltas: payment.deltas, type: 'win' })
     advanceAfterWin({ isDealer: winner === dealer })
@@ -178,12 +192,15 @@ export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
           {players.map((p, i) => (
             <button
               key={i}
-              onClick={() => toggleRiichi(i)}
+              onClick={() => cycleRiichi(i)}
               className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-colors ${
-                riichis[i] ? 'bg-yellow-700 border-yellow-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-400'
+                riichis[i] === 'double' ? 'bg-orange-700 border-orange-500 text-white' :
+                riichis[i] === 'riichi' ? 'bg-yellow-700 border-yellow-500 text-white' :
+                'bg-slate-800 border-slate-600 text-slate-400'
               }`}
+              title="Tap to cycle: Riichi → Double Riichi → None"
             >
-              {p.name.split(' ')[0]}
+              {riichis[i] === 'double' ? '2立直' : riichis[i] === 'riichi' ? '立直' : p.name.split(' ')[0]}
             </button>
           ))}
         </div>
@@ -200,11 +217,15 @@ export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
                 <button
                   key={h}
                   onClick={() => setHan(h)}
-                  className={`w-10 h-10 rounded-lg border text-sm font-bold transition-colors ${
-                    han === h ? 'bg-sky-700 border-sky-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300'
+                  className={`h-10 rounded-lg border text-sm font-bold transition-colors px-2 ${
+                    h >= 13 ? 'min-w-[4.5rem]' : 'w-10'
+                  } ${
+                    han === h
+                      ? h >= 13 ? 'bg-amber-700 border-amber-500 text-white' : 'bg-sky-700 border-sky-500 text-white'
+                      : 'bg-slate-800 border-slate-600 text-slate-300'
                   }`}
                 >
-                  {h}
+                  {HAN_LABEL[h] ?? h}
                 </button>
               ))}
             </div>

@@ -20,11 +20,11 @@ function DieFace({ value, onClick, rolling }) {
   )
 }
 
-// Dealer mode: 4 dice, one per player. Highest roll becomes East.
+// Dealer mode: one die per player. Highest roll becomes East.
 function DealerDice({ players, onConfirm }) {
   const setDealer = useGameStore((s) => s.setDealer)
-  const [rolls, setRolls] = useState([null, null, null, null])
-  const [rolling, setRolling] = useState([false, false, false, false])
+  const [rolls, setRolls] = useState(players.map(() => null))
+  const [rolling, setRolling] = useState(players.map(() => false))
   const [tieIndices, setTieIndices] = useState(null) // null = no tie phase
 
   const allRolled = rolls.every((r) => r !== null)
@@ -39,7 +39,7 @@ function DealerDice({ players, onConfirm }) {
   }
 
   function rollAll() {
-    const indicesToRoll = tieIndices ?? [0, 1, 2, 3]
+    const indicesToRoll = tieIndices ?? players.map((_, i) => i)
     indicesToRoll.forEach((i) => rollPlayer(i))
   }
 
@@ -52,7 +52,7 @@ function DealerDice({ players, onConfirm }) {
 
   function handleConfirm() {
     if (!allRolled) return
-    const candidates = tieIndices ?? [0, 1, 2, 3]
+    const candidates = tieIndices ?? players.map((_, i) => i)
     const winners = getWinner(rolls, candidates)
     if (winners.length === 1) {
       setDealer(winners[0])
@@ -66,7 +66,7 @@ function DealerDice({ players, onConfirm }) {
     }
   }
 
-  const activeCandidates = tieIndices ?? [0, 1, 2, 3]
+  const activeCandidates = tieIndices ?? players.map((_, i) => i)
   const highVal = allRolled ? Math.max(...activeCandidates.map((i) => rolls[i])) : null
 
   return (
@@ -132,13 +132,16 @@ function DealerDice({ players, onConfirm }) {
 
 // Wall mode: 2 dice, sum determines wall break.
 function WallDice({ onDone }) {
+  const numPlayers = useGameStore((s) => s.numPlayers)
   const [dice, setDice] = useState([null, null])
   const [rolling, setRolling] = useState(false)
 
   const sum = dice[0] && dice[1] ? dice[0] + dice[1] : null
   // Which player breaks wall: dealer counts anti-clockwise, 1 = dealer
-  const wallPlayer = sum ? ((sum - 1) % 4) + 1 : null
-  const wallNames = ['Dealer (East)', 'Right (South)', 'Across (West)', 'Left (North)']
+  const wallPlayer = sum ? ((sum - 1) % numPlayers) + 1 : null
+  const wallNames = numPlayers === 3
+    ? ['Dealer (East)', 'Right (South)', 'Across (West)']
+    : ['Dealer (East)', 'Right (South)', 'Across (West)', 'Left (North)']
 
   function roll() {
     setRolling(true)

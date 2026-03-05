@@ -4,37 +4,39 @@ import { getRoundName, getSeatWindName, shouldGameEnd } from '../../lib/scoring'
 
 const WIND_CHARS = { East: '東', South: '南', West: '西', North: '北' }
 
-const RETURN = 30000
-
-function formatScore(score, relative) {
+function formatScore(score, relative, returnPts) {
   if (!relative) return score.toLocaleString()
-  const diff = score - RETURN
+  const diff = score - returnPts
   const sign = diff >= 0 ? '+' : ''
   // Show in thousands with one decimal if non-zero fractional part
   const k = diff / 1000
   return `${sign}${Number.isInteger(k) ? k : k.toFixed(1)}k`
 }
 
-function ScoreRow({ player, seatWind, hasRiichi, onToggleRiichi, relative }) {
-  const diff = player.score - RETURN
+function ScoreRow({ player, seatWind, riichiState, onToggleRiichi, relative, returnPts }) {
+  const diff = player.score - returnPts
   const isNeg = diff < 0
+  const hasRiichi = riichiState === 'riichi' || riichiState === 'double'
+  const isDouble = riichiState === 'double'
   return (
     <div
-      className={`flex items-center gap-3 py-3 border-b border-slate-700 last:border-0 cursor-pointer select-none transition-colors ${hasRiichi ? 'bg-yellow-900/10' : 'hover:bg-slate-700/30'}`}
+      className={`flex items-center gap-3 py-3 border-b border-slate-700 last:border-0 cursor-pointer select-none transition-colors ${hasRiichi ? (isDouble ? 'bg-orange-900/10' : 'bg-yellow-900/10') : 'hover:bg-slate-700/30'}`}
       onClick={onToggleRiichi}
-      title="Tap to toggle riichi"
+      title="Tap to cycle: Riichi → Double Riichi → None"
     >
-      <div className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold transition-colors ${hasRiichi ? 'bg-yellow-700 text-white' : 'bg-slate-700 text-slate-200'}`}>
+      <div className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold transition-colors ${isDouble ? 'bg-orange-700 text-white' : hasRiichi ? 'bg-yellow-700 text-white' : 'bg-slate-700 text-slate-200'}`}>
         {WIND_CHARS[seatWind]}
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-slate-100 font-medium truncate">{player.name}</div>
       </div>
       {hasRiichi && (
-        <span className="text-yellow-400 text-xs font-bold tracking-wide">立直</span>
+        <span className={`text-xs font-bold tracking-wide ${isDouble ? 'text-orange-400' : 'text-yellow-400'}`}>
+          {isDouble ? '2立直' : '立直'}
+        </span>
       )}
       <div className={`text-lg font-bold tabular-nums ${relative ? (isNeg ? 'text-red-400' : diff > 0 ? 'text-green-400' : 'text-slate-400') : (player.score < 0 ? 'text-red-400' : 'text-slate-100')}`}>
-        {formatScore(player.score, relative)}
+        {formatScore(player.score, relative, returnPts)}
       </div>
     </div>
   )
@@ -69,13 +71,14 @@ function LogEntry({ entry, players, isLast, onUndo }) {
 }
 
 export default function GameScreen({ onHandEntry, onDrawEntry, onNagashi, onChombo, onWallDice, onEndGame, riichiFlags, onToggleRiichi }) {
-  const { players, dealer, round, honba, riichiPool, log, gameType, entryMode, undoLastEntry, setEntryMode } = useGameStore()
+  const { players, dealer, round, honba, riichiPool, log, gameType, entryMode, numPlayers, undoLastEntry, setEntryMode } = useGameStore()
   const [logOpen, setLogOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [confirmEnd, setConfirmEnd] = useState(false)
   const [relativeScore, setRelativeScore] = useState(false)
 
   const gameOver = shouldGameEnd(round, gameType)
+  const returnPts = numPlayers === 3 ? 35000 : 30000
 
   return (
     <div className="px-4 py-4 space-y-4 max-w-md mx-auto">
@@ -105,7 +108,7 @@ export default function GameScreen({ onHandEntry, onDrawEntry, onNagashi, onChom
             onClick={() => setRelativeScore((v) => !v)}
             className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
           >
-            {relativeScore ? 'Showing ±30k' : 'Showing absolute'} · switch
+            {relativeScore ? `Showing ±${returnPts / 1000}k` : 'Showing absolute'} · switch
           </button>
         </div>
         <div className="px-4 divide-y divide-slate-700">
@@ -113,10 +116,11 @@ export default function GameScreen({ onHandEntry, onDrawEntry, onNagashi, onChom
             <ScoreRow
               key={i}
               player={p}
-              seatWind={getSeatWindName(i, dealer)}
-              hasRiichi={riichiFlags?.[i] ?? false}
+              seatWind={getSeatWindName(i, dealer, numPlayers)}
+              riichiState={riichiFlags?.[i] ?? 'none'}
               onToggleRiichi={() => onToggleRiichi?.(i)}
               relative={relativeScore}
+              returnPts={returnPts}
             />
           ))}
         </div>

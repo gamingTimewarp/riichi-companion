@@ -2,13 +2,15 @@ import { useState, useMemo } from 'react'
 import useGameStore from '../../stores/gameStore'
 import { calculateDrawPayments } from '../../lib/scoring'
 
+const isRiichiDeclared = (r) => r === 'riichi' || r === 'double'
+
 export default function DrawEntrySheet({ onConfirm, onCancel, riichiFlags }) {
   const {
-    players, dealer, riichiPool, drawRule,
+    players, dealer, riichiPool, drawRule, numPlayers,
     updateScores, addLogEntry, advanceAfterDraw, setRiichiPool, getSnapshot,
   } = useGameStore()
 
-  const [tenpai, setTenpai] = useState([false, false, false, false])
+  const [tenpai, setTenpai] = useState(() => players.map(() => false))
 
   function toggle(i) {
     setTenpai((prev) => { const n = [...prev]; n[i] = !n[i]; return n })
@@ -16,15 +18,15 @@ export default function DrawEntrySheet({ onConfirm, onCancel, riichiFlags }) {
 
   const tenpaiIndices = tenpai.map((v, i) => v ? i : -1).filter((i) => i >= 0)
   const { deltas: drawDeltas } = useMemo(
-    () => calculateDrawPayments(tenpaiIndices, drawRule),
-    [tenpaiIndices.join(','), drawRule],
+    () => calculateDrawPayments(tenpaiIndices, drawRule, numPlayers),
+    [tenpaiIndices.join(','), drawRule, numPlayers],
   )
 
   const dealerTenpai = tenpai[dealer]
 
   // Riichi sticks from pre-declared markers (GameScreen) — will be deducted + added to pool
-  const riichiCount = (riichiFlags ?? []).filter(Boolean).length
-  const riichiDeltas = (riichiFlags ?? []).map((r) => (r ? -1000 : 0))
+  const riichiCount = (riichiFlags ?? []).filter(isRiichiDeclared).length
+  const riichiDeltas = (riichiFlags ?? []).map((r) => (isRiichiDeclared(r) ? -1000 : 0))
 
   // Combined deltas for preview: riichi deductions + draw payments
   const combinedDeltas = drawDeltas.map((d, i) => d + (riichiDeltas[i] ?? 0))
@@ -93,7 +95,8 @@ export default function DrawEntrySheet({ onConfirm, onCancel, riichiFlags }) {
           >
             <span className="font-medium flex items-center gap-2">
               {p.name}
-              {riichiFlags?.[i] && <span className="text-yellow-400 text-[10px] font-bold">立直</span>}
+              {riichiFlags?.[i] === 'double' && <span className="text-orange-400 text-[10px] font-bold">2立直</span>}
+              {riichiFlags?.[i] === 'riichi' && <span className="text-yellow-400 text-[10px] font-bold">立直</span>}
             </span>
             <span className="text-sm">
               {tenpai[i] ? 'Tenpai' : 'Noten'}

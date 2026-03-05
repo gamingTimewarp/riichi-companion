@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-const defaultPlayers = (names) =>
+const defaultPlayers = (names, startingScore = 30000) =>
   (names || ['Player 1', 'Player 2', 'Player 3', 'Player 4']).map((name) => ({
     name,
-    score: 30000,
+    score: startingScore,
   }))
 
 const makeSnapshot = (state) => ({
@@ -28,10 +28,11 @@ const useGameStore = create(
       gameType: 'hanchan',      // 'hanchan' | 'tonpuusen'
       entryMode: 'detailed',    // 'detailed' | 'quick'
       drawRule: 'fixed-pool',   // 'fixed-noten' | 'fixed-pool'
+      numPlayers: 4,            // 3 | 4
 
-      startGame: (playerNames, gameType = 'hanchan', entryMode = 'detailed', drawRule = 'fixed-pool') =>
+      startGame: (playerNames, gameType = 'hanchan', entryMode = 'detailed', drawRule = 'fixed-pool', numPlayers = 4) =>
         set({
-          players: defaultPlayers(playerNames),
+          players: defaultPlayers(playerNames, numPlayers === 3 ? 35000 : 30000),
           dealer: 0,
           round: 1,
           honba: 0,
@@ -41,6 +42,7 @@ const useGameStore = create(
           gameType,
           entryMode,
           drawRule,
+          numPlayers,
         }),
 
       endGame: () => set({ gameActive: false }),
@@ -96,7 +98,7 @@ const useGameStore = create(
           }
           return {
             round: state.round + 1,
-            dealer: (state.dealer + 1) % 4,
+            dealer: (state.dealer + 1) % state.numPlayers,
             honba: 0,
             riichiPool: 0,
           }
@@ -110,7 +112,7 @@ const useGameStore = create(
           }
           return {
             round: state.round + 1,
-            dealer: (state.dealer + 1) % 4,
+            dealer: (state.dealer + 1) % state.numPlayers,
             honba: state.honba + 1,
           }
         }),

@@ -3,10 +3,10 @@ import useGameStore from '../../stores/gameStore'
 import { calculateChomboPayments } from '../../lib/scoring'
 
 export default function ChomboSheet({ onConfirm, onCancel }) {
-  const { players, dealer, updateScores, addLogEntry, getSnapshot } = useGameStore()
+  const { players, dealer, numPlayers, updateScores, addLogEntry, getSnapshot } = useGameStore()
   const [offender, setOffender] = useState(null)
 
-  const payment = offender !== null ? calculateChomboPayments(offender, dealer) : null
+  const payment = offender !== null ? calculateChomboPayments(offender, dealer, numPlayers) : null
 
   function handleConfirm() {
     if (payment === null) return

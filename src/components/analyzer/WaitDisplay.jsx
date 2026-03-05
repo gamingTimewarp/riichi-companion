@@ -36,8 +36,9 @@ const WAIT_DESC = {
  *   onReveal        — () => void
  *   doraIndicators  — TileObject[]  face-up dora indicators (reduce pool)
  *   uraIndicators   — TileObject[]  revealed ura indicators (reduce pool)
+ *   furitenInts     — Set<number>   wait ints that appear in "Your" discards (furiten)
  */
-export default function WaitDisplay({ waits, tiles, revealed, onReveal, doraIndicators = [], uraIndicators = [] }) {
+export default function WaitDisplay({ waits, tiles, revealed, onReveal, doraIndicators = [], uraIndicators = [], furitenInts = new Set() }) {
   if (!waits || waits.length === 0) return null
 
   // All visible indicator tiles reduce the remaining pool for that tile type
@@ -64,12 +65,16 @@ export default function WaitDisplay({ waits, tiles, revealed, onReveal, doraIndi
             const tile = riichiIntToTile(w)
             const rem = remaining(w)
             const types = getWaitTypes(tiles, w)
+            const isFuriten = furitenInts.has(w)
             return (
-              <div key={w} className="flex flex-col items-center gap-0.5">
+              <div key={w} className={`flex flex-col items-center gap-0.5 rounded-lg p-1 ${isFuriten ? 'bg-rose-900/30 ring-1 ring-rose-700' : ''}`}>
                 <TileDisplay tile={tile} size="md" />
                 <span className="text-[10px] text-slate-500">{rem} left</span>
+                {isFuriten && (
+                  <span className="text-[10px] text-rose-400 font-bold leading-tight">furiten</span>
+                )}
                 {types.map((t) => (
-                  <span key={t} className="text-[10px] text-green-500/80 leading-tight">
+                  <span key={t} className={`text-[10px] leading-tight ${isFuriten ? 'text-rose-400/60' : 'text-green-500/80'}`}>
                     {WAIT_LABEL[t]} · {WAIT_DESC[t]}
                   </span>
                 ))}

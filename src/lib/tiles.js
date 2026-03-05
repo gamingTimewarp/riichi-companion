@@ -35,6 +35,16 @@ export const TILE_TYPES = [
 ]
 
 /**
+ * Returns true for terminals (1 or 9 of m/p/s) and all honor tiles (z).
+ * Used for Nagashi Mangan eligibility checks.
+ */
+export function isTerminalOrHonor(tile) {
+  if (tile.suit === 'z') return true
+  const v = tile.value === 0 ? 5 : tile.value
+  return v === 1 || v === 9
+}
+
+/**
  * Convert a tile object to its riichi-ts integer.
  * Aka dora (red 5) maps to the same integer as a regular 5 — riichi-ts handles
  * aka separately via its akadora option.
