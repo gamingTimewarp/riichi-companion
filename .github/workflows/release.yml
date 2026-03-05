@@ -39,8 +39,35 @@ jobs:
           name: windows-bundles
           path: src-tauri/target/release/bundle/**/*.{exe,msi}
 
+  build-android:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install NDK
+        run: echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;29.0.14206865"
+      - uses: dtolnay/rust-toolchain@stable
+      - run: rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+      - run: npm ci
+      - run: npx tauri android init
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/29.0.14206865
+      - run: npm run tauri:android
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/29.0.14206865
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-bundles
+          path: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
+
   publish-release:
-    needs: [build-linux, build-windows]
+    needs: [build-linux, build-windows, build-android]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -53,9 +80,14 @@ jobs:
         with:
           name: windows-bundles
           path: artifacts/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-bundles
+          path: artifacts/android
       - uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/linux/**/*
             artifacts/windows/**/*
+            artifacts/android/**/*
           generate_release_notes: true
