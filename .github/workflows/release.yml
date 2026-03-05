@@ -38,3 +38,24 @@ jobs:
         with:
           name: windows-bundles
           path: src-tauri/target/release/bundle/**/*.{exe,msi}
+
+  publish-release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-bundles
+          path: artifacts/linux
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-bundles
+          path: artifacts/windows
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/linux/**/*
+            artifacts/windows/**/*
+          generate_release_notes: true
