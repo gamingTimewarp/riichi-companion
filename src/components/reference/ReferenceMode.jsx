@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import useHandStore from '../../stores/handStore.js'
 import { YAKU_REF, TERMS } from '../../lib/referenceData.js'
 
@@ -88,10 +88,10 @@ export default function ReferenceMode() {
   const [search, setSearch] = useState('')
   const [showAchieved, setShowAchieved] = useState(false)
 
-  // Reset achievable filter when switching tabs
-  useEffect(() => {
+  function setTabAndReset(nextTab) {
+    setTab(nextTab)
     setShowAchieved(false)
-  }, [tab])
+  }
 
   // Build set of achieved yaku keys from the current analysis result
   const achievedKeys = new Set(Object.keys(analysisResult?.yaku ?? {}))
@@ -128,12 +128,12 @@ export default function ReferenceMode() {
         <Tab
           label={`Yaku (${filteredYaku.length})`}
           active={tab === 'yaku'}
-          onClick={() => setTab('yaku')}
+          onClick={() => setTabAndReset('yaku')}
         />
         <Tab
           label={`Terms (${filteredTerms.length})`}
           active={tab === 'terms'}
-          onClick={() => setTab('terms')}
+          onClick={() => setTabAndReset('terms')}
         />
       </div>
 

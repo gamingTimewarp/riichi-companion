@@ -39,7 +39,9 @@ function formatDeltas(deltas, players) {
 }
 
 export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
-  const { players, dealer, honba, riichiPool, entryMode, numPlayers, updateScores, addLogEntry, advanceAfterWin, setRiichiPool, getSnapshot } = useGameStore()
+  const { players, dealer, honba, riichiPool, entryMode, numPlayers, rules, updateScores, addLogEntry, advanceAfterWin, setRiichiPool, getSnapshot } = useGameStore()
+  const riichiStickValue = rules?.riichiStickValue ?? 1000
+  const honbaValuePerPayer = rules?.honbaValuePerPayer ?? 100
 
   const [winner, setWinner] = useState(null)
   const [isTsumo, setIsTsumo] = useState(true)
@@ -75,6 +77,8 @@ export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
         honba,
         riichiPool: effectivePool,
         numPlayers,
+        riichiStickValue,
+        honbaValuePerPayer,
       })
     } else {
       if (quickPoints === null) return null
@@ -97,13 +101,13 @@ export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
         deltas[discarder] -= quickPoints
         deltas[winner] += quickPoints
       }
-      const honbaBonus = honba * 100 * (numPlayers - 1)
-      deltas[winner] += honbaBonus + effectivePool * 1000
+      const honbaBonus = honba * honbaValuePerPayer * (numPlayers - 1)
+      deltas[winner] += honbaBonus + effectivePool * riichiStickValue
       if (!isTsumo) deltas[discarder] -= honbaBonus
-      else { for (let i = 0; i < numPlayers; i++) { if (i !== winner) deltas[i] -= honba * 100 } }
+      else { for (let i = 0; i < numPlayers; i++) { if (i !== winner) deltas[i] -= honba * honbaValuePerPayer } }
       return { deltas }
     }
-  }, [winner, isTsumo, discarder, han, fu, quickPoints, honba, effectivePool, dealer, entryMode])
+  }, [winner, isTsumo, discarder, han, fu, quickPoints, honba, effectivePool, dealer, entryMode, numPlayers, riichiStickValue, honbaValuePerPayer])
 
   function handleConfirm() {
     if (!payment || winner === null) return
@@ -111,7 +115,7 @@ export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
     // Capture pre-hand snapshot for undo BEFORE any score changes
     const snapshot = getSnapshot()
 
-    const riichiDeltas = riichis.map((r) => (isRiichiDeclared(r) ? -1000 : 0))
+    const riichiDeltas = riichis.map((r) => (isRiichiDeclared(r) ? -riichiStickValue : 0))
     if (riichiDeltas.some((d) => d !== 0)) {
       updateScores(riichiDeltas)
     }
@@ -143,8 +147,8 @@ export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
       {/* Honba info */}
       {(honba > 0 || riichiPool > 0) && (
         <div className="flex gap-2 text-xs text-slate-400">
-          {honba > 0 && <span>{honba} honba (+{honba * 100}/player bonus)</span>}
-          {riichiPool > 0 && <span>Pool: {riichiPool * 1000}pts</span>}
+          {honba > 0 && <span>{honba} honba (+{honba * honbaValuePerPayer}/player bonus)</span>}
+          {riichiPool > 0 && <span>Pool: {(riichiPool * riichiStickValue).toLocaleString()}pts</span>}
         </div>
       )}
 
@@ -205,7 +209,7 @@ export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
           ))}
         </div>
         {riichiSticks > 0 && (
-          <p className="text-xs text-yellow-400">{riichiSticks} riichi stick(s) — 1000pts each deducted</p>
+          <p className="text-xs text-yellow-400">{riichiSticks} riichi stick(s) — {riichiStickValue.toLocaleString()}pts each deducted</p>
         )}
       </Section>
 

@@ -129,8 +129,14 @@ function ScoreChart({ players, log }) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function EndGameScreen({ onNewGame }) {
-  const { players, log, numPlayers, endGame } = useGameStore()
-  const { finalScores, placement, uma, totals } = calculateFinalScores(players)
+  const { players, log, numPlayers, rules, endGame } = useGameStore()
+  const currentUma = rules?.uma?.slice(0, numPlayers) ?? (numPlayers === 3 ? [15000, 0, -15000] : [15000, 5000, -5000, -15000])
+  const returnPts = rules?.returnPts ?? (numPlayers === 3 ? 35000 : 30000)
+  const { placement, uma, totals } = calculateFinalScores(players, {
+    uma: currentUma,
+    returnPts,
+    oka: rules?.oka ?? 0,
+  })
 
   // Sort players by placement for display
   const ranked = players
@@ -186,8 +192,9 @@ export default function EndGameScreen({ onNewGame }) {
       <ScoreChart players={players} log={log} />
 
       <div className="text-xs text-slate-500 text-center">
-        Uma: {numPlayers === 3 ? '+15k / 0 / −15k' : '+15k / +5k / −5k / −15k'} (EMA)
-        &nbsp;·&nbsp; Return: {numPlayers === 3 ? '35,000' : '30,000'}
+        Uma: {currentUma.map((v) => `${v > 0 ? '+' : ''}${(v / 1000).toFixed(0)}k`).join(' / ')}
+        &nbsp;·&nbsp; Return: {returnPts.toLocaleString()}
+        {(rules?.oka ?? 0) !== 0 && <>&nbsp;·&nbsp; Oka: {rules.oka > 0 ? '+' : ''}{rules.oka.toLocaleString()}</>}
       </div>
 
       <div className="text-xs text-slate-500 text-center">

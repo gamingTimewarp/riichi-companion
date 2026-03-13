@@ -1,7 +1,7 @@
 {
   "name": "riichi-companion",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:build": "APPIMAGE_EXTRACT_AND_RUN=1 tauri build",
-    "tauri:android": "tauri android build --apk"
+    "tauri:android": "tauri android build --apk",
+    "test": "node --test"
   },
   "dependencies": {
     "react": "^19.2.0",
