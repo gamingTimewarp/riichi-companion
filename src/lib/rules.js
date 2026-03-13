@@ -21,6 +21,11 @@ export function createDefaultRules(numPlayers = 4) {
     openTanyao: true,
     redDoraEnabled: true,
     redFives: getDefaultRedFives(),
+    kiriageMangan: false,
+    kazoeYakumanPolicy: 'enabled', // enabled | capped | disabled
+    multipleRon: 'allow', // allow | head-bump
+    agariYame: false,
+    allowWestRoundExtension: false,
   }
 }
 
@@ -54,6 +59,9 @@ export function presetRules(preset = 'ema', numPlayers = 4) {
       redDoraEnabled: false,
       redFives: { m: 0, p: 0, s: 0 },
       bustEndsGame: true,
+      kiriageMangan: false,
+      kazoeYakumanPolicy: 'capped',
+      multipleRon: 'allow',
     }
   }
   if (preset === 'mleague') {
@@ -67,6 +75,9 @@ export function presetRules(preset = 'ema', numPlayers = 4) {
       allTenpaiDealerStays: true,
       oka: 0,
       uma: numPlayers === 3 ? [15000, 0, -15000] : [30000, 10000, -10000, -30000],
+      kiriageMangan: true,
+      kazoeYakumanPolicy: 'enabled',
+      multipleRon: 'head-bump',
     }
   }
   return { ...base, preset: 'ema' }
@@ -79,6 +90,8 @@ export function sanitizeRules(rules, numPlayers = 4) {
     const n = Number(value)
     return Number.isFinite(n) ? n : fallback
   }
+  const allowedKazoePolicies = new Set(['enabled', 'capped', 'disabled'])
+  const allowedMultipleRon = new Set(['allow', 'head-bump'])
   return {
     ...next,
     startScore: Math.max(10000, toNum(next.startScore, defaults.startScore)),
@@ -88,6 +101,11 @@ export function sanitizeRules(rules, numPlayers = 4) {
     honbaValuePerPayer: Math.max(0, toNum(next.honbaValuePerPayer, defaults.honbaValuePerPayer)),
     uma: normalizeUma(next.uma, numPlayers),
     redFives: normalizeRedFives(next.redFives),
+    kazoeYakumanPolicy: allowedKazoePolicies.has(next.kazoeYakumanPolicy) ? next.kazoeYakumanPolicy : defaults.kazoeYakumanPolicy,
+    multipleRon: allowedMultipleRon.has(next.multipleRon) ? next.multipleRon : defaults.multipleRon,
+    kiriageMangan: Boolean(next.kiriageMangan),
+    agariYame: Boolean(next.agariYame),
+    allowWestRoundExtension: Boolean(next.allowWestRoundExtension),
   }
 }
 

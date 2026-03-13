@@ -31,15 +31,19 @@ export function getSeatWindName(playerIdx, dealer, numPlayers = 4) {
 
 // Standard base points table (dealer/non-dealer handled in calculatePayments)
 // Returns base points before multiplier (fu * 2^(han+2))
-export function calculateBasePoints(han, fu) {
+export function calculateBasePoints(han, fu, { kiriageMangan = false, kazoeYakumanPolicy = 'enabled' } = {}) {
   if (han >= 26) return 16000 // double yakuman
-  if (han >= 13) return 8000  // (single) yakuman / kazoe
+  if (han >= 13) {
+    if (kazoeYakumanPolicy === 'enabled') return 8000
+    if (kazoeYakumanPolicy === 'capped' || kazoeYakumanPolicy === 'disabled') return 6000
+  }
   if (han >= 11) return 8000  // sanbaiman
   if (han >= 8)  return 6000  // baiman
   if (han >= 6)  return 4000  // haneman
   if (han >= 5)  return 2000  // mangan
 
   const base = fu * Math.pow(2, han + 2)
+  if (kiriageMangan && ((han === 4 && fu === 30) || (han === 3 && fu === 60))) return 2000
   return Math.min(base, 2000) // cap at mangan
 }
 
@@ -69,9 +73,11 @@ export function calculatePayments({
   numPlayers = 4,
   riichiStickValue = 1000,
   honbaValuePerPayer = 100,
+  kiriageMangan = false,
+  kazoeYakumanPolicy = 'enabled',
 }) {
   const deltas = new Array(numPlayers).fill(0)
-  const base = calculateBasePoints(han, fu)
+  const base = calculateBasePoints(han, fu, { kiriageMangan, kazoeYakumanPolicy })
   const honbaBonus = honba * honbaValuePerPayer // per payer, per honba
 
   const isWinnerDealer = winnerIndex === dealerIndex

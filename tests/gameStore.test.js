@@ -125,3 +125,26 @@ test('startGame normalizes red-five overrides', () => {
   const state = useGameStore.getState()
   assert.deepEqual(state.rules.redFives, { m: 0, p: 2, s: 1 })
 })
+
+test('getSnapshot includes rules for export/replay parity', () => {
+  resetStore()
+  useGameStore.getState().setRules({ riichiStickValue: 1500, openTanyao: false })
+
+  const snapshot = useGameStore.getState().getSnapshot()
+  assert.equal(snapshot.rules.riichiStickValue, 1500)
+  assert.equal(snapshot.rules.openTanyao, false)
+})
+
+test('undoLastEntry restores rules from snapshot', () => {
+  resetStore()
+  const before = useGameStore.getState().getSnapshot()
+  useGameStore.getState().addLogEntry({ snapshot: before, label: 'test', type: 'draw', deltas: [0, 0, 0, 0] })
+
+  useGameStore.getState().setRules({ riichiStickValue: 1800, openTanyao: false })
+  assert.equal(useGameStore.getState().rules.riichiStickValue, 1800)
+
+  useGameStore.getState().undoLastEntry()
+  const state = useGameStore.getState()
+  assert.equal(state.rules.riichiStickValue, before.rules.riichiStickValue)
+  assert.equal(state.rules.openTanyao, before.rules.openTanyao)
+})

@@ -42,6 +42,8 @@ export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
   const { players, dealer, honba, riichiPool, entryMode, numPlayers, rules, updateScores, addLogEntry, advanceAfterWin, setRiichiPool, getSnapshot } = useGameStore()
   const riichiStickValue = rules?.riichiStickValue ?? 1000
   const honbaValuePerPayer = rules?.honbaValuePerPayer ?? 100
+  const kiriageMangan = rules?.kiriageMangan ?? false
+  const kazoeYakumanPolicy = rules?.kazoeYakumanPolicy ?? "enabled"
 
   const [winner, setWinner] = useState(null)
   const [isTsumo, setIsTsumo] = useState(true)
@@ -79,6 +81,8 @@ export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
         numPlayers,
         riichiStickValue,
         honbaValuePerPayer,
+        kiriageMangan,
+        kazoeYakumanPolicy,
       })
     } else {
       if (quickPoints === null) return null
@@ -107,7 +111,7 @@ export default function HandEntrySheet({ onConfirm, onCancel, riichiFlags }) {
       else { for (let i = 0; i < numPlayers; i++) { if (i !== winner) deltas[i] -= honba * honbaValuePerPayer } }
       return { deltas }
     }
-  }, [winner, isTsumo, discarder, han, fu, quickPoints, honba, effectivePool, dealer, entryMode, numPlayers, riichiStickValue, honbaValuePerPayer])
+  }, [winner, isTsumo, discarder, han, fu, quickPoints, honba, effectivePool, dealer, entryMode, numPlayers, riichiStickValue, honbaValuePerPayer, kiriageMangan, kazoeYakumanPolicy])
 
   function handleConfirm() {
     if (!payment || winner === null) return

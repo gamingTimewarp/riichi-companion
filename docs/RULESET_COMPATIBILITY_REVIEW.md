@@ -166,3 +166,9 @@ Introduce a persisted rules profile object (store + export schema):
 ## 7) Recommendation
 
 Proceed with the Android roadmap, but gate release quality on a **rules profile milestone** early in implementation. Without this, the app will ship as a strong EMA-focused tool but will struggle to satisfy mixed-club and international compatibility expectations.
+
+
+## 8) v1.3 Follow-ups
+
+1. Add global reset action for rules/settings profiles to simplify support and table handoffs.
+2. Add extra golden test vectors for complex policy interactions (kiriage + kazoe + rounding edge cases).

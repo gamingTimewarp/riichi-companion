@@ -14,7 +14,45 @@ const makeSnapshot = (state) => ({
   round: state.round,
   honba: state.honba,
   riichiPool: state.riichiPool,
+  rules: { ...state.rules },
 })
+
+const migrateState = (persistedState = {}) => {
+  const numPlayers = Math.max(3, Math.min(4, Number(persistedState.numPlayers) || persistedState.players?.length || 4))
+  const rules = sanitizeRules({
+    ...createDefaultRules(numPlayers),
+    ...(persistedState.rules ?? {}),
+  }, numPlayers)
+
+  const players = (persistedState.players ?? defaultPlayers(undefined, rules.startScore))
+    .slice(0, numPlayers)
+    .map((player, index) => ({
+      name: player?.name || `Player ${index + 1}`,
+      score: Number.isFinite(player?.score) ? player.score : rules.startScore,
+    }))
+
+  const log = Array.isArray(persistedState.log)
+    ? persistedState.log.map((entry) => {
+      const snapshot = entry?.snapshot
+      if (!snapshot) return entry
+      return {
+        ...entry,
+        snapshot: {
+          ...snapshot,
+          rules: sanitizeRules({ ...rules, ...(snapshot.rules ?? {}) }, numPlayers),
+        },
+      }
+    })
+    : []
+
+  return {
+    ...persistedState,
+    players,
+    numPlayers,
+    rules,
+    log,
+  }
+}
 
 const useGameStore = create(
   persist(
@@ -89,6 +127,7 @@ const useGameStore = create(
             round: snap.round,
             honba: snap.honba,
             riichiPool: snap.riichiPool,
+            rules: snap.rules ? sanitizeRules(snap.rules, state.numPlayers) : state.rules,
           }
         }),
 
@@ -131,8 +170,14 @@ const useGameStore = create(
       setDealer: (index) => set({ dealer: index }),
       setRiichiPool: (pool) => set({ riichiPool: pool }),
     }),
-    { name: 'riichi-game' }
+    {
+      name: 'riichi-game',
+      version: 2,
+      migrate: (persistedState) => migrateState(persistedState),
+    }
   )
 )
+
+export const __testables = { migrateState }
 
 export default useGameStore

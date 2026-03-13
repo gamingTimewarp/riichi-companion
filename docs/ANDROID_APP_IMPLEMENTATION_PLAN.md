@@ -217,3 +217,12 @@ If spike fails perf/reliability thresholds, evaluate React Native/Kotlin rewrite
 - Zero P0/P1 scoring bugs post-release month 1.
 - Export/import success rate ≥ 99% on tested devices.
 
+See also: `docs/RELEASE_1_2_CHECKLIST.md` for practical release execution steps.
+
+---
+
+
+## 9) v1.3 Candidate Features (Post-1.2)
+
+- Add a one-tap **Reset all settings** action in Settings to restore both 3-player and 4-player profiles to defaults.
+- Expand scoring regression fixtures with additional edge-policy interaction vectors (e.g., dealer ron rounding + custom kazoe policy + kiriage interactions).

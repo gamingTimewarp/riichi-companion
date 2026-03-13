@@ -17,6 +17,9 @@ test('createDefaultRules returns 4-player defaults', () => {
   assert.deepEqual(rules.uma, [15000, 5000, -5000, -15000])
   assert.equal(rules.openTanyao, true)
   assert.equal(rules.redDoraEnabled, true)
+  assert.equal(rules.kiriageMangan, false)
+  assert.equal(rules.kazoeYakumanPolicy, 'enabled')
+  assert.equal(rules.multipleRon, 'allow')
 })
 
 test('createDefaultRules returns 3-player defaults', () => {
@@ -62,4 +65,12 @@ test('sanitizeRules clamps important numeric ranges', () => {
 test('getRulesValidationErrors flags excessive red fives total', () => {
   const errors = getRulesValidationErrors({ redFives: { m: 2, p: 2, s: 2 }, redDoraEnabled: true }, 4)
   assert.ok(errors.some((e) => e.includes('Total red fives')))
+})
+
+
+test('sanitizeRules normalizes medium-priority toggle enums', () => {
+  const rules = sanitizeRules({ kazoeYakumanPolicy: 'invalid', multipleRon: 'weird', kiriageMangan: 1 }, 4)
+  assert.equal(rules.kazoeYakumanPolicy, 'enabled')
+  assert.equal(rules.multipleRon, 'allow')
+  assert.equal(rules.kiriageMangan, true)
 })

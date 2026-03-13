@@ -118,6 +118,24 @@ npm run build    # production build → dist/
 
 ---
 
+### Crash Reports (Local)
+
+Riichi Companion now captures local, non-PII crash diagnostics (error message, stack trace, timestamp, and runtime context) to browser/app storage.
+
+- In the event of a fatal UI crash, a recovery screen appears.
+- Use **Show crash log** to review locally captured reports.
+- Use **Clear logs** to remove stored reports.
+- Crash records are stored under localStorage key `riichi-crash-log`.
+
+These logs remain local to your device unless you manually copy/share them.
+
+**Desktop/AppImage log retrieval (manual):**
+1. Open devtools (`Ctrl+Shift+I`).
+2. Go to **Application** → **Local Storage**.
+3. Copy the value for `riichi-crash-log` and save it as JSON for issue reports.
+
+---
+
 ## Hand Analyzer
 
 The Hand Analyzer helps you check shanten count, identify tenpai waits, calculate scores, and explore furiten.
@@ -263,8 +281,8 @@ Before starting:
 2. Choose **Player Count**: 4-player (Yonma) or 3-player (Sanma).
 3. Choose **Game Type**: Hanchan (East + South rounds) or Tonpuusen (East round only).
 4. Choose **Entry Mode**: Detailed (enter han and fu) or Quick (enter the point total directly). This can be changed mid-game.
-5. Configure optional **Rule Toggles** (preset, start/return/oka, uma, open tanyao, red dora counts, riichi stick value, honba value, bust handling, and all-tenpai dealer continuation) if needed for your table.
-6. Tap **Start & Roll for Dealer**.
+5. Configure rules in the **Settings** tab (preset, start/return/oka, uma, open tanyao, red dora counts, riichi stick value, honba value, bust handling, and all-tenpai dealer continuation).
+6. Return to **Game Tracker** and tap **Start & Roll for Dealer**.
 
 ---
 
