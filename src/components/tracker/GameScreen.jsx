@@ -71,14 +71,15 @@ function LogEntry({ entry, players, isLast, onUndo }) {
 }
 
 export default function GameScreen({ onHandEntry, onDrawEntry, onNagashi, onChombo, onWallDice, onEndGame, riichiFlags, onToggleRiichi }) {
-  const { players, dealer, round, honba, riichiPool, log, gameType, entryMode, numPlayers, undoLastEntry, setEntryMode } = useGameStore()
+  const { players, dealer, round, honba, riichiPool, log, gameType, entryMode, numPlayers, rules, undoLastEntry, setEntryMode } = useGameStore()
   const [logOpen, setLogOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [confirmEnd, setConfirmEnd] = useState(false)
   const [relativeScore, setRelativeScore] = useState(false)
 
   const gameOver = shouldGameEnd(round, gameType)
-  const returnPts = numPlayers === 3 ? 35000 : 30000
+  const returnPts = rules?.returnPts ?? (numPlayers === 3 ? 35000 : 30000)
+  const riichiStickValue = rules?.riichiStickValue ?? 1000
 
   return (
     <div className="px-4 py-4 space-y-4 max-w-md mx-auto">
@@ -94,7 +95,7 @@ export default function GameScreen({ onHandEntry, onDrawEntry, onNagashi, onChom
         )}
         {riichiPool > 0 && (
           <span className="bg-yellow-900 text-yellow-300 text-xs px-2 py-1 rounded-full">
-            Pool: {(riichiPool * 1000).toLocaleString()}
+            Pool: {(riichiPool * riichiStickValue).toLocaleString()}
           </span>
         )}
         <span className="ml-auto text-slate-500 text-xs">{gameType === 'hanchan' ? 'Hanchan' : 'Tonpuusen'}</span>

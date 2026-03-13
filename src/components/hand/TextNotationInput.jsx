@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { parseNotation, tilesToNotation } from '../../lib/tiles.js'
 
 /**
@@ -9,17 +9,8 @@ import { parseNotation, tilesToNotation } from '../../lib/tiles.js'
  *   onParse  — (tiles: TileObject[]) => void — called when parse succeeds with 0 errors
  */
 export default function TextNotationInput({ tiles, onParse }) {
-  const [text, setText] = useState('')
+  const [text, setText] = useState(() => tilesToNotation(tiles))
   const [errors, setErrors] = useState([])
-  const initialized = useRef(false)
-
-  // Pre-populate from current tiles when first shown
-  useEffect(() => {
-    if (!initialized.current) {
-      initialized.current = true
-      setText(tilesToNotation(tiles))
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleChange(e) {
     const val = e.target.value

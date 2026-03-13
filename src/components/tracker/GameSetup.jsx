@@ -1,20 +1,19 @@
 import { useState } from 'react'
 import useGameStore from '../../stores/gameStore'
+import useSettingsStore from '../../stores/settingsStore'
 
 export default function GameSetup({ onStart }) {
   const startGame = useGameStore((s) => s.startGame)
+  const getRulesForPlayers = useSettingsStore((s) => s.getRulesForPlayers)
+
   const [numPlayers, setNumPlayers] = useState(4)
   const [names, setNames] = useState(['Player 1', 'Player 2', 'Player 3', 'Player 4'])
   const [gameType, setGameType] = useState('hanchan')
   const [entryMode, setEntryMode] = useState('detailed')
   const [drawRule, setDrawRule] = useState('fixed-pool')
 
-  function handleNumPlayers(n) {
-    setNumPlayers(n)
-  }
-
   function handleStart() {
-    startGame(names.slice(0, numPlayers), gameType, entryMode, drawRule, numPlayers)
+    startGame(names.slice(0, numPlayers), gameType, entryMode, drawRule, numPlayers, getRulesForPlayers(numPlayers))
     onStart()
   }
 
@@ -22,7 +21,10 @@ export default function GameSetup({ onStart }) {
     <div className="px-4 py-6 space-y-6 max-w-md mx-auto">
       <h2 className="text-xl font-bold text-slate-100">New Game</h2>
 
-      {/* Player count */}
+      <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3 text-xs text-slate-300">
+        Rules presets/toggles are now configured in the <strong>Settings</strong> tab.
+      </div>
+
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Player Count</h3>
         <div className="flex gap-2">
@@ -32,7 +34,7 @@ export default function GameSetup({ onStart }) {
           ].map(({ value, label, sub }) => (
             <button
               key={value}
-              onClick={() => handleNumPlayers(value)}
+              onClick={() => setNumPlayers(value)}
               className={`flex-1 py-3 px-2 rounded-lg border text-sm font-medium transition-colors ${
                 numPlayers === value
                   ? 'bg-sky-700 border-sky-500 text-white'
@@ -46,7 +48,6 @@ export default function GameSetup({ onStart }) {
         </div>
       </div>
 
-      {/* Player names */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Players</h3>
         {names.slice(0, numPlayers).map((name, i) => (
@@ -68,7 +69,6 @@ export default function GameSetup({ onStart }) {
         ))}
       </div>
 
-      {/* Game type */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Game Type</h3>
         <div className="flex gap-2">
@@ -92,7 +92,6 @@ export default function GameSetup({ onStart }) {
         </div>
       </div>
 
-      {/* Entry mode */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Score Entry</h3>
         <div className="flex gap-2">
@@ -116,7 +115,6 @@ export default function GameSetup({ onStart }) {
         </div>
       </div>
 
-      {/* Draw payment rule */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Draw Payments</h3>
         <div className="flex gap-2">

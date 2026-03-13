@@ -4,21 +4,69 @@ on:
   workflow_dispatch:
   push:
     tags: ['v*']
+  pull_request:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  preflight:
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate tag/version consistency
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAURI_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          echo "Tag: $TAG"
+          echo "package.json: $PKG_VERSION"
+          echo "tauri.conf.json: $TAURI_VERSION"
+          test "$TAG" = "$PKG_VERSION"
+          test "$TAG" = "$TAURI_VERSION"
+
   build-linux:
     runs-on: ubuntu-22.04
+    needs: [preflight]
+    if: always() && (needs.preflight.result == 'success' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libappindicator3-dev librsvg2-dev patchelf
+      - run: sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libappindicator3-dev librsvg2-dev patchelf xvfb
       - uses: dtolnay/rust-toolchain@stable
       - run: npm ci
       - run: npm run tauri build -- --bundles appimage,deb,rpm
         env:
           APPIMAGE_EXTRACT_AND_RUN: 1
+      - name: Smoke-test AppImage launch
+        run: |
+          APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name '*.AppImage' | head -n1)
+          if [ -z "$APPIMAGE" ]; then
+            echo 'No AppImage found for smoke test.'
+            exit 1
+          fi
+
+          set +e
+          timeout 20s xvfb-run -a env APPIMAGE_EXTRACT_AND_RUN=1 "$APPIMAGE" > /tmp/appimage-smoke.log 2>&1
+          CODE=$?
+          set -e
+
+          # 124 means timeout (process stayed alive long enough), 0 means clean exit.
+          if [ "$CODE" -ne 0 ] && [ "$CODE" -ne 124 ]; then
+            echo "AppImage smoke test failed with exit code $CODE"
+            cat /tmp/appimage-smoke.log
+            exit "$CODE"
+          fi
+          echo "AppImage smoke test passed with exit code $CODE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-smoke-logs
+          path: /tmp/appimage-smoke.log
       - uses: actions/upload-artifact@v4
         with:
           name: linux-bundles
@@ -29,6 +77,8 @@ jobs:
 
   build-windows:
     runs-on: windows-latest
+    needs: [preflight]
+    if: always() && (needs.preflight.result == 'success' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,6 +96,8 @@ jobs:
 
   build-android:
     runs-on: ubuntu-22.04
+    needs: [preflight]
+    if: always() && (needs.preflight.result == 'success' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -67,6 +119,7 @@ jobs:
         env:
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/29.0.14206865
       - name: Sign APK
+        if: github.event_name != 'pull_request'
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 -d > /tmp/release.keystore
           BUILD_TOOLS=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)
@@ -80,11 +133,15 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: android-bundles
-          path: src-tauri/gen/android/app/build/outputs/apk/universal/release/riichi-companion.apk
+          path: |
+            src-tauri/gen/android/app/build/outputs/apk/universal/release/riichi-companion.apk
+            src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
 
   publish-release:
     needs: [build-linux, build-windows, build-android]
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-22.04
+    environment: release
     permissions:
       contents: write
     steps:
@@ -100,10 +157,23 @@ jobs:
         with:
           name: android-bundles
           path: artifacts/android
+      - name: Generate checksums
+        run: |
+          find artifacts -type f -print0 | xargs -0 sha256sum > artifacts/SHA256SUMS.txt
+      - name: Verify APK and capture certs
+        run: |
+          BUILD_TOOLS=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)
+          APK=$(find artifacts/android -name 'riichi-companion.apk' | head -n1 || true)
+          if [ -n "$APK" ]; then
+            $BUILD_TOOLS/apksigner verify --print-certs "$APK" | tee artifacts/android/APK_SIGNATURE.txt
+          else
+            echo 'Signed APK not found; verification skipped.' > artifacts/android/APK_SIGNATURE.txt
+          fi
       - uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/linux/**/*
             artifacts/windows/**/*
             artifacts/android/**/*
+            artifacts/SHA256SUMS.txt
           generate_release_notes: true

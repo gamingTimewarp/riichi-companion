@@ -1,0 +1,22 @@
+[
+  {
+    "name": "kiriage turns 4han30fu into mangan",
+    "input": { "han": 4, "fu": 30, "opts": { "kiriageMangan": true } },
+    "expectedBase": 2000
+  },
+  {
+    "name": "without kiriage 4han30fu is below mangan",
+    "input": { "han": 4, "fu": 30, "opts": { "kiriageMangan": false } },
+    "expectedBase": 1920
+  },
+  {
+    "name": "kazoe capped maps 13han to sanbaiman",
+    "input": { "han": 13, "fu": 30, "opts": { "kazoeYakumanPolicy": "capped" } },
+    "expectedBase": 6000
+  },
+  {
+    "name": "kazoe enabled maps 13han to yakuman",
+    "input": { "han": 13, "fu": 30, "opts": { "kazoeYakumanPolicy": "enabled" } },
+    "expectedBase": 8000
+  }
+]

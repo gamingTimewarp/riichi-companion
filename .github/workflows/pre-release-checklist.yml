@@ -1,0 +1,53 @@
+name: Pre-release Checklist
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Optional release tag (e.g. v1.2.0)"
+        required: false
+        type: string
+
+concurrency:
+  group: pre-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pre-release-checks:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Web production build
+        run: npm run build
+
+      - name: Validate local version consistency
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAURI_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          echo "package.json: $PKG_VERSION"
+          echo "tauri.conf.json: $TAURI_VERSION"
+          test "$PKG_VERSION" = "$TAURI_VERSION"
+
+      - name: Validate requested release tag (optional)
+        if: ${{ inputs.tag != '' }}
+        run: |
+          TAG="${{ inputs.tag }}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          case "$TAG" in
+            v*) ;;
+            *) echo "Tag must start with v"; exit 1 ;;
+          esac
+          test "${TAG#v}" = "$PKG_VERSION"
