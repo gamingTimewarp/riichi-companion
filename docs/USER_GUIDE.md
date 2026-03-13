@@ -92,7 +92,9 @@ Download the `.apk` file and open it on your Android device. You may need to all
 
 The app will appear in your launcher as **Riichi Companion**.
 
-> The APK is unsigned (sideload only). A Play Store release may follow in a future version.
+> The APK is signed for release distribution. Continue to verify checksums/signature details from the release page before installing.
+
+> Note: v1.2.0 work has started with initial rule-toggle guardrails and broader preset coverage; additional refinement will continue in follow-up updates.
 
 ---
 
@@ -261,7 +263,8 @@ Before starting:
 2. Choose **Player Count**: 4-player (Yonma) or 3-player (Sanma).
 3. Choose **Game Type**: Hanchan (East + South rounds) or Tonpuusen (East round only).
 4. Choose **Entry Mode**: Detailed (enter han and fu) or Quick (enter the point total directly). This can be changed mid-game.
-5. Tap **Start & Roll for Dealer**.
+5. Configure optional **Rule Toggles** (preset, start/return/oka, uma, open tanyao, red dora counts, riichi stick value, honba value, bust handling, and all-tenpai dealer continuation) if needed for your table.
+6. Tap **Start & Roll for Dealer**.
 
 ---
 
@@ -338,7 +341,8 @@ Tap **Draw** to open the draw sheet.
 **Round advancement:**
 - Dealer tenpai → dealer retains (renchan); honba increments.
 - Dealer noten → round advances; honba increments.
-- All players tenpai or all noten → round also advances.
+- All players tenpai → dealer remains (renchan); honba increments.
+- All players noten → round advances; honba increments.
 
 ---
 

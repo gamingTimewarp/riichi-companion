@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import useHandStore from '../../stores/handStore.js'
 import useProfileStore from '../../stores/profileStore.js'
 import { analyseHand } from '../../lib/analysis.js'
+import useGameStore from '../../stores/gameStore.js'
 import { TILE_TYPES, tileToUnicode, riichiIntToTile } from '../../lib/tiles.js'
 import HandDisplay from '../hand/HandDisplay.jsx'
 import TextNotationInput from '../hand/TextNotationInput.jsx'
@@ -251,10 +252,14 @@ export default function AnalyzerMode() {
     playerDiscards,
   } = useHandStore()
   const { mode } = useProfileStore()
+  const rules = useGameStore((s) => s.rules)
+  const allowAka = rules?.redDoraEnabled ?? true
+  const redFives = rules?.redFives ?? { m: 1, p: 1, s: 1 }
+  const openTanyao = rules?.openTanyao ?? true
 
   const [inputMode, setInputMode] = useState('picker')
   const [winOpts, setWinOpts] = useState({ tsumo: true, riichi: false, ippatsu: false, doubleRiichi: false, lastTile: false, afterKan: false, bakaze: 27, jikaze: 27, doraIndicators: [], uraIndicators: [] })
-  const [revealed, setRevealed] = useState(true)
+  const [revealState, setRevealState] = useState({ key: '', revealed: true })
   const [textKey, setTextKey] = useState(0)
 
   // Meld selection state
@@ -270,13 +275,17 @@ export default function AnalyzerMode() {
       setAnalysisResult(null)
       return
     }
-    setAnalysisResult(analyseHand(tiles, { ...winOpts, melds }))
-  }, [tiles, melds, winOpts]) // eslint-disable-line react-hooks/exhaustive-deps
+    setAnalysisResult(analyseHand(tiles, {
+      ...winOpts,
+      melds,
+      kuitan: openTanyao,
+      allowAka,
+      redFives,
+    }))
+  }, [tiles, melds, winOpts, openTanyao, allowAka, redFives]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reset reveal when tiles change (learning mode)
-  useEffect(() => {
-    setRevealed(mode !== 'learning')
-  }, [tiles, mode])
+  const revealKey = `${mode}|${tiles.map((t) => `${t.suit}${t.value}${t.isAka ? 'r' : ''}`).join(',')}|${melds.length}`
+  const revealed = mode !== 'learning' || (revealState.key === revealKey && revealState.revealed)
 
   const result = analysisResult
   const shanten = result?.shanten ?? Infinity
@@ -418,7 +427,7 @@ export default function AnalyzerMode() {
 
           {/* Input area */}
           {inputMode === 'picker' ? (
-            <TilePicker tiles={tiles} onAdd={addTile} maxTiles={maxClosedTiles} />
+            <TilePicker tiles={tiles} onAdd={addTile} maxTiles={maxClosedTiles} allowAka={allowAka} redFives={redFives} />
           ) : (
             <TextNotationInput key={textKey} tiles={tiles} onParse={(p) => setTiles(p)} />
           )}
@@ -439,7 +448,7 @@ export default function AnalyzerMode() {
           waits={result.waits}
           tiles={tiles}
           revealed={revealed}
-          onReveal={() => setRevealed(true)}
+          onReveal={() => setRevealState({ key: revealKey, revealed: true })}
           doraIndicators={winOpts.doraIndicators}
           uraIndicators={winOpts.riichi ? winOpts.uraIndicators : []}
           furitenInts={furitenInts}

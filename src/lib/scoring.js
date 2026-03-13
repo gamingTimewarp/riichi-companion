@@ -57,10 +57,22 @@ export function calculateBasePoints(han, fu) {
  * @param {number} params.honba
  * @param {number} params.riichiPool    number of 1000-point sticks
  */
-export function calculatePayments({ han, fu, isTsumo, winnerIndex, discarderIndex, dealerIndex, honba, riichiPool, numPlayers = 4 }) {
+export function calculatePayments({
+  han,
+  fu,
+  isTsumo,
+  winnerIndex,
+  discarderIndex,
+  dealerIndex,
+  honba,
+  riichiPool,
+  numPlayers = 4,
+  riichiStickValue = 1000,
+  honbaValuePerPayer = 100,
+}) {
   const deltas = new Array(numPlayers).fill(0)
   const base = calculateBasePoints(han, fu)
-  const honbaBonus = honba * 100 // per payer, per honba
+  const honbaBonus = honba * honbaValuePerPayer // per payer, per honba
 
   const isWinnerDealer = winnerIndex === dealerIndex
 
@@ -86,7 +98,7 @@ export function calculatePayments({ han, fu, isTsumo, winnerIndex, discarderInde
   }
 
   // Winner collects riichi pool
-  deltas[winnerIndex] += riichiPool * 1000
+  deltas[winnerIndex] += riichiPool * riichiStickValue
 
   return { deltas }
 }
@@ -143,10 +155,11 @@ export function calculateDrawPayments(tenpaiIndices, rule = 'fixed-noten', numPl
  * @param {Array<{name: string, score: number}>} players
  * @returns {{ finalScores, placement, uma, totals }}
  */
-export function calculateFinalScores(players) {
+export function calculateFinalScores(players, { uma: inputUma, returnPts, oka = 0 } = {}) {
   const numPlayers = players.length
-  const UMA = numPlayers === 3 ? [15000, 0, -15000] : [15000, 5000, -5000, -15000]
-  const returnPts = numPlayers === 3 ? 35000 : 30000
+  const defaultUma = numPlayers === 3 ? [15000, 0, -15000] : [15000, 5000, -5000, -15000]
+  const UMA = Array.isArray(inputUma) && inputUma.length >= numPlayers ? inputUma : defaultUma
+  const returnTarget = typeof returnPts === 'number' ? returnPts : (numPlayers === 3 ? 35000 : 30000)
 
   // Sort by score descending, tracking original indices
   const ranked = players
@@ -160,7 +173,8 @@ export function calculateFinalScores(players) {
   ranked.forEach((p, rank) => {
     placement[p.index] = rank + 1
     uma[p.index] = UMA[rank]
-    totals[p.index] = p.score - returnPts + UMA[rank]
+    const okaBonus = rank === 0 ? oka : 0
+    totals[p.index] = p.score - returnTarget + UMA[rank] + okaBonus
   })
 
   return {

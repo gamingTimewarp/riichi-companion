@@ -55,7 +55,17 @@ export function analyseHand(tiles, opts = {}) {
   // Each meld occupies exactly 3 effective slots regardless of type (pon, chi, or kan)
   const totalTiles = tiles.length + melds.length * 3
 
-  const akaCount = tiles.filter((t) => t.isAka).length
+  const allowAka = opts.allowAka !== false
+  const redLimits = opts.redFives ?? { m: 1, p: 1, s: 1 }
+  const akaCountsBySuit = allowAka
+    ? tiles.filter((t) => t.isAka).reduce((acc, t) => {
+      acc[t.suit] = (acc[t.suit] ?? 0) + 1
+      return acc
+    }, { m: 0, p: 0, s: 0 })
+    : { m: 0, p: 0, s: 0 }
+  const akaCount = allowAka
+    ? ['m', 'p', 's'].reduce((acc, suit) => acc + Math.min(akaCountsBySuit[suit] ?? 0, redLimits?.[suit] ?? 0), 0)
+    : 0
 
   const {
     tsumo,
@@ -107,7 +117,7 @@ export function analyseHand(tiles, opts = {}) {
       lastTile,
       afterKan,
       akaCount,
-      akaCount > 0,   // allowAka
+      allowAka,
       allowKuitan,
       false,          // withKiriage
     )

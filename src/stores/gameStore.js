@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { createDefaultRules, sanitizeRules } from '../lib/rules.js'
 
 const defaultPlayers = (names, startingScore = 30000) =>
   (names || ['Player 1', 'Player 2', 'Player 3', 'Player 4']).map((name) => ({
@@ -29,10 +30,12 @@ const useGameStore = create(
       entryMode: 'detailed',    // 'detailed' | 'quick'
       drawRule: 'fixed-pool',   // 'fixed-noten' | 'fixed-pool'
       numPlayers: 4,            // 3 | 4
+      rules: createDefaultRules(4),
 
-      startGame: (playerNames, gameType = 'hanchan', entryMode = 'detailed', drawRule = 'fixed-pool', numPlayers = 4) =>
-        set({
-          players: defaultPlayers(playerNames, numPlayers === 3 ? 35000 : 30000),
+      startGame: (playerNames, gameType = 'hanchan', entryMode = 'detailed', drawRule = 'fixed-pool', numPlayers = 4, rulesOverrides = {}) => {
+        const nextRules = sanitizeRules({ ...createDefaultRules(numPlayers), ...rulesOverrides }, numPlayers)
+        return set({
+          players: defaultPlayers(playerNames, nextRules.startScore),
           dealer: 0,
           round: 1,
           honba: 0,
@@ -43,11 +46,18 @@ const useGameStore = create(
           entryMode,
           drawRule,
           numPlayers,
-        }),
+          rules: nextRules,
+        })
+      },
 
       endGame: () => set({ gameActive: false }),
 
       setEntryMode: (mode) => set({ entryMode: mode }),
+      setRules: (patch) =>
+        set((state) => {
+          const next = sanitizeRules({ ...state.rules, ...patch }, state.numPlayers)
+          return { rules: next }
+        }),
 
       updateScores: (deltas) =>
         set((state) => ({
@@ -105,9 +115,10 @@ const useGameStore = create(
         }),
 
       // Handles draw: dealer tenpai = renchan; dealer noten (or all noten) = advance
-      advanceAfterDraw: ({ dealerTenpai }) =>
+      advanceAfterDraw: ({ dealerTenpai, allTenpai = false }) =>
         set((state) => {
-          if (dealerTenpai) {
+          const stayOnDraw = dealerTenpai && (!allTenpai || state.rules.allTenpaiDealerStays)
+          if (stayOnDraw) {
             return { honba: state.honba + 1 }
           }
           return {
