@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { createDefaultRules, sanitizeRules } from '../lib/rules.js'
 
 const defaultPlayers = (names, startingScore = 30000) =>
   (names || ['Player 1', 'Player 2', 'Player 3', 'Player 4']).map((name) => ({
@@ -13,7 +14,45 @@ const makeSnapshot = (state) => ({
   round: state.round,
   honba: state.honba,
   riichiPool: state.riichiPool,
+  rules: { ...state.rules },
 })
+
+const migrateState = (persistedState = {}) => {
+  const numPlayers = Math.max(3, Math.min(4, Number(persistedState.numPlayers) || persistedState.players?.length || 4))
+  const rules = sanitizeRules({
+    ...createDefaultRules(numPlayers),
+    ...(persistedState.rules ?? {}),
+  }, numPlayers)
+
+  const players = (persistedState.players ?? defaultPlayers(undefined, rules.startScore))
+    .slice(0, numPlayers)
+    .map((player, index) => ({
+      name: player?.name || `Player ${index + 1}`,
+      score: Number.isFinite(player?.score) ? player.score : rules.startScore,
+    }))
+
+  const log = Array.isArray(persistedState.log)
+    ? persistedState.log.map((entry) => {
+      const snapshot = entry?.snapshot
+      if (!snapshot) return entry
+      return {
+        ...entry,
+        snapshot: {
+          ...snapshot,
+          rules: sanitizeRules({ ...rules, ...(snapshot.rules ?? {}) }, numPlayers),
+        },
+      }
+    })
+    : []
+
+  return {
+    ...persistedState,
+    players,
+    numPlayers,
+    rules,
+    log,
+  }
+}
 
 const useGameStore = create(
   persist(
@@ -29,10 +68,12 @@ const useGameStore = create(
       entryMode: 'detailed',    // 'detailed' | 'quick'
       drawRule: 'fixed-pool',   // 'fixed-noten' | 'fixed-pool'
       numPlayers: 4,            // 3 | 4
+      rules: createDefaultRules(4),
 
-      startGame: (playerNames, gameType = 'hanchan', entryMode = 'detailed', drawRule = 'fixed-pool', numPlayers = 4) =>
-        set({
-          players: defaultPlayers(playerNames, numPlayers === 3 ? 35000 : 30000),
+      startGame: (playerNames, gameType = 'hanchan', entryMode = 'detailed', drawRule = 'fixed-pool', numPlayers = 4, rulesOverrides = {}) => {
+        const nextRules = sanitizeRules({ ...createDefaultRules(numPlayers), ...rulesOverrides }, numPlayers)
+        return set({
+          players: defaultPlayers(playerNames, nextRules.startScore),
           dealer: 0,
           round: 1,
           honba: 0,
@@ -43,11 +84,18 @@ const useGameStore = create(
           entryMode,
           drawRule,
           numPlayers,
-        }),
+          rules: nextRules,
+        })
+      },
 
       endGame: () => set({ gameActive: false }),
 
       setEntryMode: (mode) => set({ entryMode: mode }),
+      setRules: (patch) =>
+        set((state) => {
+          const next = sanitizeRules({ ...state.rules, ...patch }, state.numPlayers)
+          return { rules: next }
+        }),
 
       updateScores: (deltas) =>
         set((state) => ({
@@ -79,6 +127,7 @@ const useGameStore = create(
             round: snap.round,
             honba: snap.honba,
             riichiPool: snap.riichiPool,
+            rules: snap.rules ? sanitizeRules(snap.rules, state.numPlayers) : state.rules,
           }
         }),
 
@@ -105,9 +154,10 @@ const useGameStore = create(
         }),
 
       // Handles draw: dealer tenpai = renchan; dealer noten (or all noten) = advance
-      advanceAfterDraw: ({ dealerTenpai }) =>
+      advanceAfterDraw: ({ dealerTenpai, allTenpai = false }) =>
         set((state) => {
-          if (dealerTenpai) {
+          const stayOnDraw = dealerTenpai && (!allTenpai || state.rules.allTenpaiDealerStays)
+          if (stayOnDraw) {
             return { honba: state.honba + 1 }
           }
           return {
@@ -120,8 +170,14 @@ const useGameStore = create(
       setDealer: (index) => set({ dealer: index }),
       setRiichiPool: (pool) => set({ riichiPool: pool }),
     }),
-    { name: 'riichi-game' }
+    {
+      name: 'riichi-game',
+      version: 2,
+      migrate: (persistedState) => migrateState(persistedState),
+    }
   )
 )
+
+export const __testables = { migrateState }
 
 export default useGameStore

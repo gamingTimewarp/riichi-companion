@@ -6,9 +6,10 @@ const isRiichiDeclared = (r) => r === 'riichi' || r === 'double'
 
 export default function DrawEntrySheet({ onConfirm, onCancel, riichiFlags }) {
   const {
-    players, dealer, riichiPool, drawRule, numPlayers,
+    players, dealer, riichiPool, drawRule, numPlayers, rules,
     updateScores, addLogEntry, advanceAfterDraw, setRiichiPool, getSnapshot,
   } = useGameStore()
+  const riichiStickValue = rules?.riichiStickValue ?? 1000
 
   const [tenpai, setTenpai] = useState(() => players.map(() => false))
 
@@ -16,17 +17,20 @@ export default function DrawEntrySheet({ onConfirm, onCancel, riichiFlags }) {
     setTenpai((prev) => { const n = [...prev]; n[i] = !n[i]; return n })
   }
 
-  const tenpaiIndices = tenpai.map((v, i) => v ? i : -1).filter((i) => i >= 0)
+  const tenpaiIndices = useMemo(
+    () => tenpai.map((v, i) => (v ? i : -1)).filter((i) => i >= 0),
+    [tenpai],
+  )
   const { deltas: drawDeltas } = useMemo(
     () => calculateDrawPayments(tenpaiIndices, drawRule, numPlayers),
-    [tenpaiIndices.join(','), drawRule, numPlayers],
+    [tenpaiIndices, drawRule, numPlayers],
   )
 
   const dealerTenpai = tenpai[dealer]
 
   // Riichi sticks from pre-declared markers (GameScreen) — will be deducted + added to pool
   const riichiCount = (riichiFlags ?? []).filter(isRiichiDeclared).length
-  const riichiDeltas = (riichiFlags ?? []).map((r) => (isRiichiDeclared(r) ? -1000 : 0))
+  const riichiDeltas = (riichiFlags ?? []).map((r) => (isRiichiDeclared(r) ? -riichiStickValue : 0))
 
   // Combined deltas for preview: riichi deductions + draw payments
   const combinedDeltas = drawDeltas.map((d, i) => d + (riichiDeltas[i] ?? 0))
@@ -48,7 +52,7 @@ export default function DrawEntrySheet({ onConfirm, onCancel, riichiFlags }) {
       : `Draw — tenpai: ${tenpaiIndices.map((i) => players[i].name).join(', ')}`
 
     addLogEntry({ snapshot, label, deltas: combinedDeltas, type: 'draw' })
-    advanceAfterDraw({ dealerTenpai })
+    advanceAfterDraw({ dealerTenpai, allTenpai: tenpaiIndices.length === numPlayers })
     onConfirm()
   }
 
@@ -72,11 +76,11 @@ export default function DrawEntrySheet({ onConfirm, onCancel, riichiFlags }) {
           <div className="text-yellow-300 font-semibold">Riichi declarations this hand</div>
           {(riichiFlags ?? []).map((r, i) => r ? (
             <div key={i} className="text-yellow-400">
-              {players[i].name} — 立直 stick added to pool (−1,000pts)
+              {players[i].name} — 立直 stick added to pool (−{riichiStickValue.toLocaleString()}pts)
             </div>
           ) : null)}
           <div className="text-yellow-500 pt-1">
-            Pool after: {((riichiPool + riichiCount) * 1000).toLocaleString()}pts (carries to next hand)
+            Pool after: {((riichiPool + riichiCount) * riichiStickValue).toLocaleString()}pts (carries to next hand)
           </div>
         </div>
       )}
