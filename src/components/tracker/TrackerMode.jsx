@@ -72,6 +72,10 @@ export default function TrackerMode() {
     }
     const busted = state.players.find((p) => p.score < 0)
     if (busted) {
+      if (state.rules.bustEndsGame) {
+        setScreen('end')
+        return
+      }
       setBustInfo({ name: busted.name, score: busted.score })
     }
     setScreen('game')
@@ -80,7 +84,13 @@ export default function TrackerMode() {
   function afterChombo() {
     const state = useGameStore.getState()
     const busted = state.players.find((p) => p.score < 0)
-    if (busted) setBustInfo({ name: busted.name, score: busted.score })
+    if (busted) {
+      if (state.rules.bustEndsGame) {
+        setScreen('end')
+        return
+      }
+      setBustInfo({ name: busted.name, score: busted.score })
+    }
     setScreen('game')
   }
 

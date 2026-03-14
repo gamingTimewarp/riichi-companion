@@ -1,20 +1,61 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import useGameStore from '../../stores/gameStore'
+import useSettingsStore from '../../stores/settingsStore'
+import { presetRules, sanitizeRules } from '../../lib/rules.js'
 
 export default function GameSetup({ onStart }) {
   const startGame = useGameStore((s) => s.startGame)
+  const getRulesForPlayers = useSettingsStore((s) => s.getRulesForPlayers)
+
   const [numPlayers, setNumPlayers] = useState(4)
   const [names, setNames] = useState(['Player 1', 'Player 2', 'Player 3', 'Player 4'])
   const [gameType, setGameType] = useState('hanchan')
   const [entryMode, setEntryMode] = useState('detailed')
   const [drawRule, setDrawRule] = useState('fixed-pool')
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [rulesOverrides, setRulesOverrides] = useState({})
+  const openedViaHistoryRef = useRef(false)
 
-  function handleNumPlayers(n) {
-    setNumPlayers(n)
+  const profileRules = getRulesForPlayers(numPlayers)
+  const effectiveRules = useMemo(
+    () => sanitizeRules({ ...profileRules, ...rulesOverrides }, numPlayers),
+    [profileRules, rulesOverrides, numPlayers],
+  )
+
+
+
+  useEffect(() => {
+    if (!advancedOpen || typeof window === 'undefined') return
+
+    const markerState = { ...(window.history.state ?? {}), trackerAdvancedOverridesOpen: true }
+    window.history.pushState(markerState, '')
+    openedViaHistoryRef.current = true
+
+    const onPopState = () => {
+      setAdvancedOpen(false)
+      setRulesOverrides({})
+      openedViaHistoryRef.current = false
+    }
+
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [advancedOpen])
+
+  function closeAdvancedUI() {
+    setAdvancedOpen(false)
+    setRulesOverrides({})
+    if (typeof window !== 'undefined' && openedViaHistoryRef.current) {
+      openedViaHistoryRef.current = false
+      window.history.back()
+    }
+  }
+
+  function setRuleOverride(key, value) {
+    setRulesOverrides((prev) => ({ ...prev, [key]: value, preset: 'custom' }))
   }
 
   function handleStart() {
-    startGame(names.slice(0, numPlayers), gameType, entryMode, drawRule, numPlayers)
+    startGame(names.slice(0, numPlayers), gameType, entryMode, drawRule, numPlayers, effectiveRules)
     onStart()
   }
 
@@ -22,7 +63,10 @@ export default function GameSetup({ onStart }) {
     <div className="px-4 py-6 space-y-6 max-w-md mx-auto">
       <h2 className="text-xl font-bold text-slate-100">New Game</h2>
 
-      {/* Player count */}
+      <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3 text-xs text-slate-300">
+        Profile defaults come from <strong>Settings</strong>. You can apply temporary advanced overrides below.
+      </div>
+
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Player Count</h3>
         <div className="flex gap-2">
@@ -32,7 +76,7 @@ export default function GameSetup({ onStart }) {
           ].map(({ value, label, sub }) => (
             <button
               key={value}
-              onClick={() => handleNumPlayers(value)}
+              onClick={() => { setNumPlayers(value); setRulesOverrides({}) }}
               className={`flex-1 py-3 px-2 rounded-lg border text-sm font-medium transition-colors ${
                 numPlayers === value
                   ? 'bg-sky-700 border-sky-500 text-white'
@@ -46,7 +90,6 @@ export default function GameSetup({ onStart }) {
         </div>
       </div>
 
-      {/* Player names */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Players</h3>
         {names.slice(0, numPlayers).map((name, i) => (
@@ -68,7 +111,6 @@ export default function GameSetup({ onStart }) {
         ))}
       </div>
 
-      {/* Game type */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Game Type</h3>
         <div className="flex gap-2">
@@ -92,7 +134,6 @@ export default function GameSetup({ onStart }) {
         </div>
       </div>
 
-      {/* Entry mode */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Score Entry</h3>
         <div className="flex gap-2">
@@ -116,7 +157,6 @@ export default function GameSetup({ onStart }) {
         </div>
       </div>
 
-      {/* Draw payment rule */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Draw Payments</h3>
         <div className="flex gap-2">
@@ -138,6 +178,70 @@ export default function GameSetup({ onStart }) {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="space-y-2 rounded-lg border border-slate-700 bg-slate-900/40 p-3">
+        <button
+          type="button"
+          onClick={() => (advancedOpen ? closeAdvancedUI() : setAdvancedOpen(true))}
+          className="w-full text-left text-sm font-semibold text-slate-200"
+        >
+          {advancedOpen ? 'Hide' : 'Show'} advanced rule overrides
+        </button>
+        <p className="text-xs text-slate-400">Overrides apply to this game only and do not change Settings defaults.</p>
+
+        {advancedOpen && (
+          <div className="space-y-3 pt-2 border-t border-slate-700">
+            <div className="space-y-1">
+              <div className="text-xs text-slate-400 uppercase tracking-wide">Quick preset</div>
+              <div className="flex gap-2">
+                {['ema', 'wrc', 'mleague'].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setRulesOverrides(presetRules(preset, numPlayers))}
+                    className={`flex-1 py-2 rounded border text-xs ${effectiveRules.preset === preset ? 'bg-sky-700 border-sky-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300'}`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="flex items-center justify-between text-sm text-slate-300">
+              <span>Open tanyao</span>
+              <input type="checkbox" checked={effectiveRules.openTanyao} onChange={(e) => setRuleOverride('openTanyao', e.target.checked)} />
+            </label>
+            <label className="flex items-center justify-between text-sm text-slate-300">
+              <span>Enable red dora</span>
+              <input type="checkbox" checked={effectiveRules.redDoraEnabled} onChange={(e) => setRuleOverride('redDoraEnabled', e.target.checked)} />
+            </label>
+            <label className="flex items-center justify-between text-sm text-slate-300">
+              <span>Bust ends game immediately</span>
+              <input type="checkbox" checked={effectiveRules.bustEndsGame} onChange={(e) => setRuleOverride('bustEndsGame', e.target.checked)} />
+            </label>
+            <label className="flex items-center justify-between text-sm text-slate-300">
+              <span>All-tenpai keeps dealer</span>
+              <input type="checkbox" checked={effectiveRules.allTenpaiDealerStays} onChange={(e) => setRuleOverride('allTenpaiDealerStays', e.target.checked)} />
+            </label>
+            <label className="flex items-center justify-between text-sm text-slate-300">
+              <span>Kiriage mangan</span>
+              <input type="checkbox" checked={effectiveRules.kiriageMangan} onChange={(e) => setRuleOverride('kiriageMangan', e.target.checked)} />
+            </label>
+            <div className="grid grid-cols-2 gap-2 text-sm items-center">
+              <label className="text-slate-300">Kazoe policy</label>
+              <select value={effectiveRules.kazoeYakumanPolicy} onChange={(e) => setRuleOverride('kazoeYakumanPolicy', e.target.value)} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100">
+                <option value="enabled">Enabled</option>
+                <option value="capped">Capped</option>
+                <option value="disabled">Disabled</option>
+              </select>
+            </div>
+
+            <button type="button" onClick={() => setRulesOverrides({})} className="w-full py-2 rounded border border-slate-600 text-slate-300 text-sm hover:border-slate-400">
+              Reset advanced overrides
+            </button>
+          </div>
+        )}
       </div>
 
       <button

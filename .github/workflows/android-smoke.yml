@@ -1,0 +1,51 @@
+name: Android Emulator Smoke
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  android-emulator-smoke:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+      - run: npx tauri android init
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            npm run tauri:android
+            APK=src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
+            test -f "$APK"
+
+            adb install -r "$APK"
+            adb shell monkey -p com.riichicompanion.app -c android.intent.category.LAUNCHER 1
+            sleep 5
+            adb shell dumpsys activity activities | grep -q "com.riichicompanion.app"
+
+            # Basic emulator happy-path smoke: ensure app process is alive after launch.
+            adb shell pidof com.riichicompanion.app
+
+      - name: Upload Android smoke diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-smoke-diagnostics
+          path: |
+            src-tauri/gen/android/**/build/reports/**/*
+            src-tauri/gen/android/**/build/outputs/**/*.log
+            src-tauri/gen/android/**/build/outputs/**/*.txt
+            /Users/runner/work/_temp/android_emulator_logcat.log
+          if-no-files-found: ignore
