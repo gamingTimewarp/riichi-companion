@@ -1,34 +1,92 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import useSettingsStore from '../../stores/settingsStore'
 import { getRulesValidationErrors } from '../../lib/rules.js'
+import { importJSON } from '../../lib/storage.js'
+
+function downloadJSON(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 export default function SettingsMode() {
   const [numPlayers, setNumPlayers] = useState(4)
+  const [status, setStatus] = useState('')
+  const importRef = useRef(null)
+
   const rules = useSettingsStore((s) => s.rulesByPlayers[numPlayers])
   const setRulesForPlayers = useSettingsStore((s) => s.setRulesForPlayers)
   const applyPresetForPlayers = useSettingsStore((s) => s.applyPresetForPlayers)
   const resetPresetForPlayers = useSettingsStore((s) => s.resetPresetForPlayers)
+  const resetAllSettings = useSettingsStore((s) => s.resetAllSettings)
+  const exportSettingsProfile = useSettingsStore((s) => s.exportSettingsProfile)
+  const importSettingsProfile = useSettingsStore((s) => s.importSettingsProfile)
+  const presetLocked = useSettingsStore((s) => Boolean(s.presetLockByPlayers[numPlayers]))
+  const setPresetLockForPlayers = useSettingsStore((s) => s.setPresetLockForPlayers)
 
   const rulesErrors = getRulesValidationErrors(rules, numPlayers)
 
   function updateRule(key, value) {
+    if (presetLocked) return
     setRulesForPlayers(numPlayers, { [key]: value })
   }
 
   function updateUmaAt(index, value) {
+    if (presetLocked) return
     const nextUma = [...(rules.uma ?? [])]
     nextUma[index] = value
     setRulesForPlayers(numPlayers, { uma: nextUma })
   }
 
   function updateRedAt(suit, value) {
+    if (presetLocked) return
     setRulesForPlayers(numPlayers, { redFives: { ...rules.redFives, [suit]: Number(value) || 0 } })
+  }
+
+  function handleExport() {
+    const payload = exportSettingsProfile()
+    downloadJSON(payload, `riichi-settings-profile-${new Date().toISOString().slice(0, 10)}.json`)
+    setStatus('Settings profile exported.')
+  }
+
+  async function handleImport(file) {
+    if (!file) return
+    try {
+      const parsed = await importJSON(file)
+      importSettingsProfile(parsed)
+      setStatus('Settings profile imported successfully.')
+    } catch (err) {
+      setStatus(err?.message || 'Failed to import settings profile.')
+    }
   }
 
   return (
     <div className="px-4 py-6 space-y-6 max-w-md mx-auto">
       <h2 className="text-xl font-bold text-slate-100">Settings</h2>
       <p className="text-sm text-slate-400">Configure default rules presets/toggles used when you start a new game.</p>
+
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Settings Profile</h3>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={handleExport} className="py-2 rounded border border-slate-600 text-slate-200 text-sm hover:border-slate-400">Export profile</button>
+          <button type="button" onClick={() => importRef.current?.click()} className="py-2 rounded border border-slate-600 text-slate-200 text-sm hover:border-slate-400">Import profile</button>
+          <input
+            ref={importRef}
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={(e) => {
+              handleImport(e.target.files?.[0])
+              e.target.value = ''
+            }}
+          />
+        </div>
+        {status && <div className="text-xs text-slate-400">{status}</div>}
+      </div>
 
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Player Count Profile</h3>
@@ -45,16 +103,38 @@ export default function SettingsMode() {
         </div>
       </div>
 
+
+      <label className="flex items-center justify-between text-sm text-slate-300">
+        <span>Lock preset edits for {numPlayers}p</span>
+        <input
+          type="checkbox"
+          checked={presetLocked}
+          onChange={(e) => setPresetLockForPlayers(numPlayers, e.target.checked)}
+        />
+      </label>
+      {presetLocked && <p className="text-xs text-amber-300">Preset is locked. Unlock to edit rules manually.</p>}
+
       <div className="space-y-2">
         <div className="text-xs text-slate-400 uppercase tracking-wide">Preset</div>
         <div className="flex gap-2">
           <button type="button" onClick={() => applyPresetForPlayers(numPlayers, 'ema')} className={`flex-1 py-2 rounded border text-sm ${rules.preset === 'ema' ? 'bg-sky-700 border-sky-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300'}`}>EMA</button>
           <button type="button" onClick={() => applyPresetForPlayers(numPlayers, 'wrc')} className={`flex-1 py-2 rounded border text-sm ${rules.preset === 'wrc' ? 'bg-sky-700 border-sky-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300'}`}>WRC-like</button>
           <button type="button" onClick={() => applyPresetForPlayers(numPlayers, 'mleague')} className={`flex-1 py-2 rounded border text-sm ${rules.preset === 'mleague' ? 'bg-sky-700 border-sky-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300'}`}>M-League-like</button>
-          <button type="button" onClick={() => updateRule('preset', 'custom')} className={`flex-1 py-2 rounded border text-sm ${rules.preset === 'custom' ? 'bg-sky-700 border-sky-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300'}`}>Custom</button>
+          <button type="button" disabled={presetLocked} onClick={() => updateRule('preset', 'custom')} className={`flex-1 py-2 rounded border text-sm ${rules.preset === 'custom' ? 'bg-sky-700 border-sky-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300'}`}>Custom</button>
         </div>
         <button type="button" onClick={() => resetPresetForPlayers(numPlayers)} className="w-full py-2 rounded border border-slate-600 text-slate-300 text-sm hover:border-slate-400">
           Reset current preset defaults
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm('Reset all settings for both 3-player and 4-player profiles?')) {
+              resetAllSettings()
+            }
+          }}
+          className="w-full py-2 rounded border border-rose-700 text-rose-300 text-sm hover:border-rose-500"
+        >
+          Reset all settings (3p + 4p)
         </button>
       </div>
 
