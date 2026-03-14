@@ -59,6 +59,30 @@ export default function GameSetup({ onStart }) {
     onStart()
   }
 
+  function updateRule(key, value) {
+    setRules((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function updateUmaAt(index, value) {
+    setRules((prev) => {
+      const nextUma = [...(prev.uma ?? [])]
+      nextUma[index] = value
+      return { ...prev, uma: nextUma }
+    })
+  }
+
+  function applyPreset(preset) {
+    setRules(presetRules(preset, numPlayers))
+  }
+
+  function resetToPreset() {
+    applyPreset(rules.preset)
+  }
+
+  function updateRedAt(suit, value) {
+    setRules((prev) => ({ ...prev, redFives: { ...prev.redFives, [suit]: Number(value) || 0 } }))
+  }
+
   return (
     <div className="px-4 py-6 space-y-6 max-w-md mx-auto">
       <h2 className="text-xl font-bold text-slate-100">New Game</h2>
@@ -246,6 +270,7 @@ export default function GameSetup({ onStart }) {
 
       <button
         onClick={handleStart}
+        disabled={rulesErrors.length > 0}
         className="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white font-semibold rounded-xl transition-colors"
       >
         Start &amp; Roll for Dealer
