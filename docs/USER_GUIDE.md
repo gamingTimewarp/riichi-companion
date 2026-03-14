@@ -118,12 +118,22 @@ npm run build    # production build → dist/
 
 ---
 
+### Privacy
+
+A built-in **Privacy Policy** page is available from the **Settings** screen.
+
+- Open **Settings** → **Open privacy policy** to review local data handling details.
+- Support bundles are only exported/shared when you explicitly choose to do so.
+
+---
+
 ### Crash Reports (Local)
 
 Riichi Companion now captures local, non-PII crash diagnostics (error message, stack trace, timestamp, and runtime context) to browser/app storage.
 
 - In the event of a fatal UI crash, a recovery screen appears.
 - Use **Show crash log** to review locally captured reports.
+- Use **Download support bundle** to export crash logs plus current local settings/game snapshots for debugging.
 - Use **Clear logs** to remove stored reports.
 - Crash records are stored under localStorage key `riichi-crash-log`.
 

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import useSettingsStore from '../../stores/settingsStore'
 import { getRulesValidationErrors } from '../../lib/rules.js'
 import { importJSON } from '../../lib/storage.js'
@@ -86,6 +87,13 @@ export default function SettingsMode() {
           />
         </div>
         {status && <div className="text-xs text-slate-400">{status}</div>}
+      </div>
+
+
+      <div className="rounded border border-slate-700 bg-slate-900/40 p-3 text-xs text-slate-300">
+        <div className="font-semibold text-slate-200 mb-1">Privacy</div>
+        <p className="mb-2">Review data handling details before sharing debug bundles.</p>
+        <Link to="/privacy" className="text-sky-400 hover:text-sky-300 underline">Open privacy policy</Link>
       </div>
 
       <div className="space-y-2">
@@ -226,6 +234,16 @@ export default function SettingsMode() {
       <label className="flex items-center justify-between text-sm text-slate-300">
         <span>All-tenpai keeps dealer</span>
         <input type="checkbox" checked={rules.allTenpaiDealerStays} onChange={(e) => updateRule('allTenpaiDealerStays', e.target.checked)} />
+      </label>
+
+      <label className="flex items-center justify-between text-sm text-slate-300">
+        <span>Agari-yame enabled</span>
+        <input type="checkbox" checked={rules.agariYame} onChange={(e) => updateRule('agariYame', e.target.checked)} />
+      </label>
+
+      <label className="flex items-center justify-between text-sm text-slate-300">
+        <span>Allow West-round extension</span>
+        <input type="checkbox" checked={rules.allowWestRoundExtension} onChange={(e) => updateRule('allowWestRoundExtension', e.target.checked)} />
       </label>
     </div>
   )

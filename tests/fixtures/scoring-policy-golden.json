@@ -126,5 +126,71 @@
       -6000,
       8400
     ]
+  },
+  {
+    "name": "dealer tsumo with kazoe disabled is capped at sanbaiman",
+    "input": {
+      "han": 13,
+      "fu": 30,
+      "isTsumo": true,
+      "winnerIndex": 0,
+      "discarderIndex": null,
+      "dealerIndex": 0,
+      "honba": 0,
+      "riichiPool": 0,
+      "numPlayers": 4,
+      "kazoeYakumanPolicy": "disabled"
+    },
+    "expectedDeltas": [
+      36000,
+      -12000,
+      -12000,
+      -12000
+    ]
+  },
+  {
+    "name": "head-bump policy flag does not alter single ron payments",
+    "input": {
+      "han": 5,
+      "fu": 30,
+      "isTsumo": false,
+      "winnerIndex": 2,
+      "discarderIndex": 0,
+      "dealerIndex": 1,
+      "honba": 3,
+      "riichiPool": 2,
+      "numPlayers": 4,
+      "multipleRon": "head-bump",
+      "riichiStickValue": 1000,
+      "honbaValuePerPayer": 200
+    },
+    "expectedDeltas": [
+      -9800,
+      0,
+      11800,
+      0
+    ]
+  },
+  {
+    "name": "non-dealer tsumo with kiriage and custom values in sanma",
+    "input": {
+      "han": 4,
+      "fu": 30,
+      "isTsumo": true,
+      "winnerIndex": 1,
+      "discarderIndex": null,
+      "dealerIndex": 0,
+      "honba": 2,
+      "riichiPool": 1,
+      "numPlayers": 3,
+      "kiriageMangan": true,
+      "riichiStickValue": 1200,
+      "honbaValuePerPayer": 200
+    },
+    "expectedDeltas": [
+      -4400,
+      8000,
+      -2400
+    ]
   }
 ]

@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import useGameStore from '../../stores/gameStore'
 import useSettingsStore from '../../stores/settingsStore'
-import { getRulesValidationErrors, sanitizeRules, presetRules } from '../../lib/rules.js'
+import { presetRules, sanitizeRules } from '../../lib/rules.js'
 
 export default function GameSetup({ onStart }) {
   const startGame = useGameStore((s) => s.startGame)
@@ -12,21 +12,50 @@ export default function GameSetup({ onStart }) {
   const [gameType, setGameType] = useState('hanchan')
   const [entryMode, setEntryMode] = useState('detailed')
   const [drawRule, setDrawRule] = useState('fixed-pool')
-  const [rules, setRules] = useState(() => presetRules('ema', 4))
-  const rulesErrors = getRulesValidationErrors(rules, numPlayers)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [rulesOverrides, setRulesOverrides] = useState({})
+  const openedViaHistoryRef = useRef(false)
 
-  function handleNumPlayers(n) {
-    setRules((prev) => ({
-      ...presetRules(prev.preset, n),
-      ...prev,
-      ...sanitizeRules(prev, n),
-    }))
-    setNumPlayers(n)
+  const profileRules = getRulesForPlayers(numPlayers)
+  const effectiveRules = useMemo(
+    () => sanitizeRules({ ...profileRules, ...rulesOverrides }, numPlayers),
+    [profileRules, rulesOverrides, numPlayers],
+  )
+
+
+
+  useEffect(() => {
+    if (!advancedOpen || typeof window === 'undefined') return
+
+    const markerState = { ...(window.history.state ?? {}), trackerAdvancedOverridesOpen: true }
+    window.history.pushState(markerState, '')
+    openedViaHistoryRef.current = true
+
+    const onPopState = () => {
+      setAdvancedOpen(false)
+      setRulesOverrides({})
+      openedViaHistoryRef.current = false
+    }
+
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [advancedOpen])
+
+  function closeAdvancedUI() {
+    setAdvancedOpen(false)
+    setRulesOverrides({})
+    if (typeof window !== 'undefined' && openedViaHistoryRef.current) {
+      openedViaHistoryRef.current = false
+      window.history.back()
+    }
+  }
+
+  function setRuleOverride(key, value) {
+    setRulesOverrides((prev) => ({ ...prev, [key]: value, preset: 'custom' }))
   }
 
   function handleStart() {
-    if (rulesErrors.length > 0) return
-    startGame(names.slice(0, numPlayers), gameType, entryMode, drawRule, numPlayers, sanitizeRules(rules, numPlayers))
+    startGame(names.slice(0, numPlayers), gameType, entryMode, drawRule, numPlayers, effectiveRules)
     onStart()
   }
 
@@ -59,7 +88,7 @@ export default function GameSetup({ onStart }) {
       <h2 className="text-xl font-bold text-slate-100">New Game</h2>
 
       <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3 text-xs text-slate-300">
-        Rules presets/toggles are now configured in the <strong>Settings</strong> tab.
+        Profile defaults come from <strong>Settings</strong>. You can apply temporary advanced overrides below.
       </div>
 
       <div className="space-y-2">
@@ -71,7 +100,7 @@ export default function GameSetup({ onStart }) {
           ].map(({ value, label, sub }) => (
             <button
               key={value}
-              onClick={() => setNumPlayers(value)}
+              onClick={() => { setNumPlayers(value); setRulesOverrides({}) }}
               className={`flex-1 py-3 px-2 rounded-lg border text-sm font-medium transition-colors ${
                 numPlayers === value
                   ? 'bg-sky-700 border-sky-500 text-white'
@@ -175,92 +204,68 @@ export default function GameSetup({ onStart }) {
         </div>
       </div>
 
-      {/* Rule toggles */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Rule Toggles</h3>
+      <div className="space-y-2 rounded-lg border border-slate-700 bg-slate-900/40 p-3">
+        <button
+          type="button"
+          onClick={() => (advancedOpen ? closeAdvancedUI() : setAdvancedOpen(true))}
+          className="w-full text-left text-sm font-semibold text-slate-200"
+        >
+          {advancedOpen ? 'Hide' : 'Show'} advanced rule overrides
+        </button>
+        <p className="text-xs text-slate-400">Overrides apply to this game only and do not change Settings defaults.</p>
 
-        <div className="space-y-2">
-          <div className="text-xs text-slate-400 uppercase tracking-wide">Preset</div>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => applyPreset('ema')} className={`flex-1 py-2 rounded border text-sm ${rules.preset === 'ema' ? 'bg-sky-700 border-sky-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300'}`}>EMA</button>
-            <button type="button" onClick={() => applyPreset('wrc')} className={`flex-1 py-2 rounded border text-sm ${rules.preset === 'wrc' ? 'bg-sky-700 border-sky-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300'}`}>WRC-like</button>
-            <button type="button" onClick={() => applyPreset('mleague')} className={`flex-1 py-2 rounded border text-sm ${rules.preset === 'mleague' ? 'bg-sky-700 border-sky-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300'}`}>M-League-like</button>
-            <button type="button" onClick={() => updateRule('preset', 'custom')} className={`flex-1 py-2 rounded border text-sm ${rules.preset === 'custom' ? 'bg-sky-700 border-sky-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300'}`}>Custom</button>
-          </div>
-          <button type="button" onClick={resetToPreset} className="w-full py-2 rounded border border-slate-600 text-slate-300 text-sm hover:border-slate-400">
-            Reset current preset defaults
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <label className="text-slate-300">Start score</label>
-          <input type="number" min={10000} step={100} value={rules.startScore} onChange={(e) => updateRule('startScore', Number(e.target.value) || 0)} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100" />
-
-          <label className="text-slate-300">Return points</label>
-          <input type="number" min={10000} step={100} value={rules.returnPts} onChange={(e) => updateRule('returnPts', Number(e.target.value) || 0)} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100" />
-
-          <label className="text-slate-300">Oka (1st place bonus)</label>
-          <input type="number" value={rules.oka} onChange={(e) => updateRule('oka', Number(e.target.value) || 0)} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100" />
-
-          <label className="text-slate-300">Riichi stick value</label>
-          <input type="number" min={100} step={100} value={rules.riichiStickValue} onChange={(e) => updateRule('riichiStickValue', Number(e.target.value) || 0)} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100" />
-
-          <label className="text-slate-300">Honba / payer</label>
-          <input type="number" min={0} step={100} value={rules.honbaValuePerPayer} onChange={(e) => updateRule('honbaValuePerPayer', Number(e.target.value) || 0)} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <label className="text-slate-300">Open tanyao (kuitan)</label>
-          <input type="checkbox" checked={rules.openTanyao} onChange={(e) => updateRule('openTanyao', e.target.checked)} />
-
-          <label className="text-slate-300">Enable red dora</label>
-          <input type="checkbox" checked={rules.redDoraEnabled} onChange={(e) => updateRule('redDoraEnabled', e.target.checked)} />
-        </div>
-
-        {rules.redDoraEnabled && (
-          <div className="space-y-1">
-            <div className="text-xs text-slate-400 uppercase tracking-wide">Red fives by suit</div>
-            <div className="grid grid-cols-3 gap-2">
-              {['m', 'p', 's'].map((suit) => (
-                <label key={suit} className="flex items-center gap-2 text-slate-300 text-sm">
-                  <span>{suit}</span>
-                  <input type="number" min={0} max={2} step={1} value={rules.redFives?.[suit] ?? 0} onChange={(e) => updateRedAt(suit, e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100" />
-                </label>
-              ))}
+        {advancedOpen && (
+          <div className="space-y-3 pt-2 border-t border-slate-700">
+            <div className="space-y-1">
+              <div className="text-xs text-slate-400 uppercase tracking-wide">Quick preset</div>
+              <div className="flex gap-2">
+                {['ema', 'wrc', 'mleague'].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setRulesOverrides(presetRules(preset, numPlayers))}
+                    className={`flex-1 py-2 rounded border text-xs ${effectiveRules.preset === preset ? 'bg-sky-700 border-sky-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300'}`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            <label className="flex items-center justify-between text-sm text-slate-300">
+              <span>Open tanyao</span>
+              <input type="checkbox" checked={effectiveRules.openTanyao} onChange={(e) => setRuleOverride('openTanyao', e.target.checked)} />
+            </label>
+            <label className="flex items-center justify-between text-sm text-slate-300">
+              <span>Enable red dora</span>
+              <input type="checkbox" checked={effectiveRules.redDoraEnabled} onChange={(e) => setRuleOverride('redDoraEnabled', e.target.checked)} />
+            </label>
+            <label className="flex items-center justify-between text-sm text-slate-300">
+              <span>Bust ends game immediately</span>
+              <input type="checkbox" checked={effectiveRules.bustEndsGame} onChange={(e) => setRuleOverride('bustEndsGame', e.target.checked)} />
+            </label>
+            <label className="flex items-center justify-between text-sm text-slate-300">
+              <span>All-tenpai keeps dealer</span>
+              <input type="checkbox" checked={effectiveRules.allTenpaiDealerStays} onChange={(e) => setRuleOverride('allTenpaiDealerStays', e.target.checked)} />
+            </label>
+            <label className="flex items-center justify-between text-sm text-slate-300">
+              <span>Kiriage mangan</span>
+              <input type="checkbox" checked={effectiveRules.kiriageMangan} onChange={(e) => setRuleOverride('kiriageMangan', e.target.checked)} />
+            </label>
+            <div className="grid grid-cols-2 gap-2 text-sm items-center">
+              <label className="text-slate-300">Kazoe policy</label>
+              <select value={effectiveRules.kazoeYakumanPolicy} onChange={(e) => setRuleOverride('kazoeYakumanPolicy', e.target.value)} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100">
+                <option value="enabled">Enabled</option>
+                <option value="capped">Capped</option>
+                <option value="disabled">Disabled</option>
+              </select>
+            </div>
+
+            <button type="button" onClick={() => setRulesOverrides({})} className="w-full py-2 rounded border border-slate-600 text-slate-300 text-sm hover:border-slate-400">
+              Reset advanced overrides
+            </button>
           </div>
         )}
-
-        {rulesErrors.length > 0 && (
-          <ul className="text-xs text-rose-400 space-y-1">
-            {rulesErrors.map((err) => <li key={err}>• {err}</li>)}
-          </ul>
-        )}
-
-        <div className="space-y-1">
-          <div className="text-xs text-slate-400 uppercase tracking-wide">Uma</div>
-          <div className="grid grid-cols-4 gap-2">
-            {Array.from({ length: numPlayers }, (_, i) => (
-              <input
-                key={i}
-                type="number"
-                value={rules.uma?.[i] ?? 0}
-                onChange={(e) => updateUmaAt(i, Number(e.target.value) || 0)}
-                className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100 text-sm"
-              />
-            ))}
-          </div>
-        </div>
-
-        <label className="flex items-center justify-between text-sm text-slate-300">
-          <span>Bust ends game immediately</span>
-          <input type="checkbox" checked={rules.bustEndsGame} onChange={(e) => updateRule('bustEndsGame', e.target.checked)} />
-        </label>
-
-        <label className="flex items-center justify-between text-sm text-slate-300">
-          <span>All-tenpai keeps dealer</span>
-          <input type="checkbox" checked={rules.allTenpaiDealerStays} onChange={(e) => updateRule('allTenpaiDealerStays', e.target.checked)} />
-        </label>
       </div>
 
       <button

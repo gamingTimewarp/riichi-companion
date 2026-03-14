@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Optional release tag (e.g. v1.2.0)"
+        description: "Optional release tag (e.g. v1.3.0)"
         required: false
         type: string
 
@@ -32,6 +32,48 @@ jobs:
 
       - name: Web production build
         run: npm run build
+
+      - name: Install Linux packaging deps
+        run: sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libappindicator3-dev librsvg2-dev patchelf xvfb
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build AppImage for smoke test
+        run: npm run tauri build -- --bundles appimage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: 1
+
+      - name: Smoke-test AppImage launch (software rendering)
+        run: |
+          APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name '*.AppImage' | head -n1)
+          if [ -z "$APPIMAGE" ]; then
+            echo 'No AppImage found for smoke test.'
+            exit 1
+          fi
+
+          set +e
+          timeout 30s xvfb-run -a env \
+            APPIMAGE_EXTRACT_AND_RUN=1 \
+            WEBKIT_DISABLE_COMPOSITING_MODE=1 \
+            WEBKIT_DISABLE_DMABUF_RENDERER=1 \
+            LIBGL_ALWAYS_SOFTWARE=1 \
+            GDK_BACKEND=x11 \
+            "$APPIMAGE" > /tmp/appimage-smoke.log 2>&1
+          CODE=$?
+          set -e
+
+          if [ "$CODE" -ne 0 ] && [ "$CODE" -ne 124 ]; then
+            echo "AppImage smoke test failed with exit code $CODE"
+            cat /tmp/appimage-smoke.log
+            exit "$CODE"
+          fi
+
+      - name: Upload AppImage smoke log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-release-appimage-smoke-log
+          path: /tmp/appimage-smoke.log
 
       - name: Validate local version consistency
         run: |

@@ -50,15 +50,30 @@ jobs:
             exit 1
           fi
 
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          export WEBKIT_DISABLE_COMPOSITING_MODE=1
+          export WEBKIT_DISABLE_DMABUF_RENDERER=1
+          export LIBGL_ALWAYS_SOFTWARE=1
+          export GDK_BACKEND=x11
+
           set +e
-          timeout 20s xvfb-run -a env APPIMAGE_EXTRACT_AND_RUN=1 "$APPIMAGE" > /tmp/appimage-smoke.log 2>&1
+          timeout 30s xvfb-run -a "$APPIMAGE" > /tmp/appimage-smoke.log 2>&1
           CODE=$?
           set -e
 
-          # 124 means timeout (process stayed alive long enough), 0 means clean exit.
           if [ "$CODE" -ne 0 ] && [ "$CODE" -ne 124 ]; then
             echo "AppImage smoke test failed with exit code $CODE"
             cat /tmp/appimage-smoke.log
+
+            {
+              echo ''
+              echo '--- coredumpctl latest WebKitWebProcess ---'
+              coredumpctl info --no-pager --json=short 2>/dev/null | head -n 200 || true
+              echo ''
+              echo '--- journalctl (recent tail) ---'
+              journalctl -n 200 --no-pager 2>/dev/null || true
+            } > /tmp/appimage-crash-context.log
+
             exit "$CODE"
           fi
           echo "AppImage smoke test passed with exit code $CODE"
@@ -66,7 +81,9 @@ jobs:
         if: always()
         with:
           name: linux-smoke-logs
-          path: /tmp/appimage-smoke.log
+          path: |
+            /tmp/appimage-smoke.log
+            /tmp/appimage-crash-context.log
       - uses: actions/upload-artifact@v4
         with:
           name: linux-bundles

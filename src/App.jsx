@@ -3,6 +3,7 @@ import AnalyzerMode from './components/analyzer/AnalyzerMode'
 import TrackerMode from './components/tracker/TrackerMode'
 import ReferenceMode from './components/reference/ReferenceMode'
 import SettingsMode from './components/settings/SettingsMode'
+import PrivacyMode from './components/settings/PrivacyMode'
 
 function BottomNav() {
   const base = 'flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium transition-colors'
@@ -93,6 +94,20 @@ export default function App() {
             </>
           }
         />
+
+        <Route
+          path="/privacy"
+          element={
+            <>
+              <TopBar title="Privacy" />
+              <main className="pt-14 pb-16 min-h-dvh">
+                <PrivacyMode />
+              </main>
+              <BottomNav />
+            </>
+          }
+        />
+
         <Route
           path="/reference"
           element={
