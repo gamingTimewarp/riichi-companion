@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, NavLink } from 'react-router-do
 import AnalyzerMode from './components/analyzer/AnalyzerMode'
 import TrackerMode from './components/tracker/TrackerMode'
 import ReferenceMode from './components/reference/ReferenceMode'
+import SettingsMode from './components/settings/SettingsMode'
 
 function BottomNav() {
   const base = 'flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium transition-colors'
@@ -23,6 +24,13 @@ function BottomNav() {
       >
         <span className="text-xl">📊</span>
         <span>Game Tracker</span>
+      </NavLink>
+      <NavLink
+        to="/settings"
+        className={({ isActive }) => `${base} ${isActive ? active : inactive}`}
+      >
+        <span className="text-xl">⚙️</span>
+        <span>Settings</span>
       </NavLink>
       <NavLink
         to="/reference"
@@ -68,6 +76,18 @@ export default function App() {
               <TopBar title="Game Tracker" />
               <main className="pt-14 pb-16 min-h-dvh">
                 <TrackerMode />
+              </main>
+              <BottomNav />
+            </>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <>
+              <TopBar title="Settings" />
+              <main className="pt-14 pb-16 min-h-dvh">
+                <SettingsMode />
               </main>
               <BottomNav />
             </>

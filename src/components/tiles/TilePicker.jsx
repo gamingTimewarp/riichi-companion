@@ -17,7 +17,7 @@ const SUIT_LABEL_COLOR = {
  *   onAdd   — (tile) => void — add tile to hand
  *   maxTiles — max hand size (default 14)
  */
-export default function TilePicker({ tiles, onAdd, maxTiles = 14 }) {
+export default function TilePicker({ tiles, onAdd, maxTiles = 14, allowAka = true, redFives = { m: 1, p: 1, s: 1 } }) {
   const handFull = tiles.length >= maxTiles
 
   // Count of each (suit+value+isAka) combination in hand
@@ -35,8 +35,10 @@ export default function TilePicker({ tiles, onAdd, maxTiles = 14 }) {
   function isDisabled(tile) {
     if (handFull) return true
     if (tile.isAka) {
+      if (!allowAka) return true
       // Only 1 aka per suit; also constrained by total 4-of-a-kind
-      return countInHand(tile.suit, tile.value, true) >= 1 || totalCopiesInHand(tile.suit, tile.value) >= 4
+      const suitLimit = redFives?.[tile.suit] ?? 0
+      return countInHand(tile.suit, tile.value, true) >= suitLimit || totalCopiesInHand(tile.suit, tile.value) >= 4
     }
     return totalCopiesInHand(tile.suit, tile.value) >= 4
   }

@@ -1,0 +1,130 @@
+[
+  {
+    "name": "dealer ron uses kazoe capped policy",
+    "input": {
+      "han": 13,
+      "fu": 30,
+      "isTsumo": false,
+      "winnerIndex": 0,
+      "discarderIndex": 1,
+      "dealerIndex": 0,
+      "honba": 0,
+      "riichiPool": 0,
+      "numPlayers": 4,
+      "kazoeYakumanPolicy": "capped"
+    },
+    "expectedDeltas": [
+      36000,
+      -36000,
+      0,
+      0
+    ]
+  },
+  {
+    "name": "dealer ron uses kazoe enabled policy",
+    "input": {
+      "han": 13,
+      "fu": 30,
+      "isTsumo": false,
+      "winnerIndex": 0,
+      "discarderIndex": 1,
+      "dealerIndex": 0,
+      "honba": 0,
+      "riichiPool": 0,
+      "numPlayers": 4,
+      "kazoeYakumanPolicy": "enabled"
+    },
+    "expectedDeltas": [
+      48000,
+      -48000,
+      0,
+      0
+    ]
+  },
+  {
+    "name": "kiriage and custom stick/honba values apply together",
+    "input": {
+      "han": 4,
+      "fu": 30,
+      "isTsumo": false,
+      "winnerIndex": 1,
+      "discarderIndex": 2,
+      "dealerIndex": 0,
+      "honba": 2,
+      "riichiPool": 2,
+      "numPlayers": 4,
+      "kiriageMangan": true,
+      "riichiStickValue": 1500,
+      "honbaValuePerPayer": 300
+    },
+    "expectedDeltas": [
+      0,
+      12800,
+      -9800,
+      0
+    ]
+  },
+  {
+    "name": "non-dealer tsumo applies capped kazoe split",
+    "input": {
+      "han": 13,
+      "fu": 30,
+      "isTsumo": true,
+      "winnerIndex": 1,
+      "discarderIndex": null,
+      "dealerIndex": 0,
+      "honba": 1,
+      "riichiPool": 1,
+      "numPlayers": 4,
+      "kazoeYakumanPolicy": "capped"
+    },
+    "expectedDeltas": [
+      -12100,
+      25300,
+      -6100,
+      -6100
+    ]
+  },
+  {
+    "name": "non-dealer tsumo applies enabled kazoe split",
+    "input": {
+      "han": 13,
+      "fu": 30,
+      "isTsumo": true,
+      "winnerIndex": 1,
+      "discarderIndex": null,
+      "dealerIndex": 0,
+      "honba": 1,
+      "riichiPool": 1,
+      "numPlayers": 4,
+      "kazoeYakumanPolicy": "enabled"
+    },
+    "expectedDeltas": [
+      -16100,
+      33300,
+      -8100,
+      -8100
+    ]
+  },
+  {
+    "name": "sanma ron honors custom stick and honba values",
+    "input": {
+      "han": 3,
+      "fu": 40,
+      "isTsumo": false,
+      "winnerIndex": 2,
+      "discarderIndex": 1,
+      "dealerIndex": 0,
+      "honba": 2,
+      "riichiPool": 2,
+      "numPlayers": 3,
+      "riichiStickValue": 1200,
+      "honbaValuePerPayer": 200
+    },
+    "expectedDeltas": [
+      0,
+      -6000,
+      8400
+    ]
+  }
+]
