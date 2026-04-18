@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react'
 import useGameStore from '../../stores/gameStore'
-import { calculateDrawPayments } from '../../lib/scoring'
+import { calculateDrawPayments, formatRoundLabel } from '../../lib/scoring'
 
 const isRiichiDeclared = (r) => r === 'riichi' || r === 'double'
 
 export default function DrawEntrySheet({ onConfirm, onCancel, riichiFlags }) {
   const {
-    players, dealer, riichiPool, drawRule, numPlayers, rules,
+    players, dealer, round, honba, riichiPool, drawRule, numPlayers, rules,
     updateScores, addLogEntry, advanceAfterDraw, setRiichiPool, getSnapshot,
   } = useGameStore()
   const riichiStickValue = rules?.riichiStickValue ?? 1000
@@ -47,9 +47,11 @@ export default function DrawEntrySheet({ onConfirm, onCancel, riichiFlags }) {
     // 2. Apply tenpai/noten draw payments
     updateScores(drawDeltas)
 
-    const label = tenpaiIndices.length === 0
-      ? 'Draw — all noten'
-      : `Draw — tenpai: ${tenpaiIndices.map((i) => players[i].name).join(', ')}`
+    const roundPrefix = formatRoundLabel(round, honba)
+    const tenpaiPart = tenpaiIndices.length === 0
+      ? 'all noten'
+      : `tenpai: ${tenpaiIndices.map((i) => players[i].name).join(', ')}`
+    const label = `${roundPrefix} · Draw — ${tenpaiPart}`
 
     addLogEntry({ snapshot, label, deltas: combinedDeltas, type: 'draw' })
     advanceAfterDraw({ dealerTenpai, allTenpai: tenpaiIndices.length === numPlayers })

@@ -37,8 +37,9 @@ const WAIT_DESC = {
  *   doraIndicators  — TileObject[]  face-up dora indicators (reduce pool)
  *   uraIndicators   — TileObject[]  revealed ura indicators (reduce pool)
  *   furitenInts     — Set<number>   wait ints that appear in "Your" discards (furiten)
+ *   discardedCounts — {[int]: number}  aggregated tile counts across all player discard piles
  */
-export default function WaitDisplay({ waits, tiles, revealed, onReveal, doraIndicators = [], uraIndicators = [], furitenInts = new Set() }) {
+export default function WaitDisplay({ waits, tiles, revealed, onReveal, doraIndicators = [], uraIndicators = [], furitenInts = new Set(), discardedCounts = {} }) {
   if (!waits || waits.length === 0) return null
 
   // All visible indicator tiles reduce the remaining pool for that tile type
@@ -47,7 +48,8 @@ export default function WaitDisplay({ waits, tiles, revealed, onReveal, doraIndi
   function remaining(waitInt) {
     const inHand = tiles.filter((t) => tileToRiichi(t) === waitInt).length
     const inIndicators = indicatorCounts[waitInt] ?? 0
-    return Math.max(0, 4 - inHand - inIndicators)
+    const inDiscards = discardedCounts[waitInt] ?? 0
+    return Math.max(0, 4 - inHand - inIndicators - inDiscards)
   }
 
   const totalRemaining = waits.reduce((sum, w) => sum + remaining(w), 0)

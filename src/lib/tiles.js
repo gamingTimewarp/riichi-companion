@@ -56,6 +56,7 @@ export function tileToRiichi(tile) {
     case 'p': return 9 + (v - 1)
     case 's': return 18 + (v - 1)
     case 'z': return 27 + (v - 1)
+    case 'f': return 34  // extra tile — should be filtered before reaching riichi-ts
     default: throw new Error(`Unknown suit: ${tile.suit}`)
   }
 }
@@ -68,12 +69,15 @@ export function tileToString(tile) {
   return v + tile.suit
 }
 
+const EXTRA_TILE_NAMES = ['', 'Plum', 'Orchid', 'Chrysanthemum', 'Bamboo', 'Spring', 'Summer', 'Autumn', 'Winter']
+
 /**
- * Human-readable tile label (e.g. "5m", "East", "Red 5p").
+ * Human-readable tile label (e.g. "5m", "East", "0p", "Spring").
  */
 export function tileLabel(tile) {
   if (tile.suit === 'z') return HONOR_NAMES[tile.value]
-  if (tile.isAka) return `Red 5${tile.suit}`
+  if (tile.suit === 'f') return EXTRA_TILE_NAMES[tile.value] ?? `Extra ${tile.value}`
+  if (tile.isAka) return `0${tile.suit}`
   return `${tile.value}${tile.suit}`
 }
 
@@ -85,8 +89,28 @@ export function tileLabel(tile) {
  * Each TileObject: { suit: string, value: number, isAka: boolean, index: number }
  * `index` is the character position in the source string (for error highlighting).
  */
+// Shorthand letters → z-suit value string.
+// Uppercase-only for S (South) to avoid collision with the 's' (sou) suit char.
+// All other letters are case-insensitive since they don't conflict with m/p/s/z.
+const HONOR_SHORTCUTS = {
+  E: '1z', e: '1z',
+  S: '2z',              // uppercase only — lowercase 's' = sou suit
+  W: '3z', w: '3z',
+  N: '4z', n: '4z',
+  B: '5z', b: '5z',
+  G: '6z', g: '6z',
+  R: '7z', r: '7z',
+}
+
+function expandHonorShortcuts(str) {
+  return str.replace(/[EeSWwNnBbGgRr]/g, (ch) => HONOR_SHORTCUTS[ch] ?? ch)
+}
+
 export function parseNotation(str) {
   if (!str || str.trim() === '') return { tiles: [], errors: [] }
+
+  // Expand wind/dragon shorthands before standard parsing
+  str = expandHonorShortcuts(str)
 
   const tiles = []
   const errors = []
@@ -188,6 +212,13 @@ export function tileToUnicode(tile) {
   if (tile.suit === 'm') return String.fromCodePoint(0x1F007 + (v - 1))
   if (tile.suit === 'p') return String.fromCodePoint(0x1F019 + (v - 1))
   if (tile.suit === 's') return String.fromCodePoint(0x1F010 + (v - 1))
+  if (tile.suit === 'f') {
+    // Flowers 1–4: U+1F022–U+1F025 (Plum, Orchid, Chrysanthemum, Bamboo)
+    // Seasons 5–8: U+1F026–U+1F029 (Spring, Summer, Autumn, Winter)
+    return v <= 4
+      ? String.fromCodePoint(0x1F022 + (v - 1))
+      : String.fromCodePoint(0x1F026 + (v - 5))
+  }
   // Honors: 1z=East 2z=South 3z=West 4z=North 5z=Haku 6z=Hatsu 7z=Chun
   const zCodes = [0x1F000, 0x1F001, 0x1F002, 0x1F003, 0x1F006, 0x1F005, 0x1F004]
   return String.fromCodePoint(zCodes[v - 1])
@@ -250,5 +281,11 @@ export const PICKER_ROWS = [
   {
     suit: 'z',
     tiles: Array.from({ length: 7 }, (_, i) => ({ suit: 'z', value: i + 1, isAka: false })),
+  },
+  {
+    // Extra tiles: Flowers 1–4 (Plum, Orchid, Chrysanthemum, Bamboo)
+    //              Seasons 5–8 (Spring, Summer, Autumn, Winter)
+    suit: 'f',
+    tiles: Array.from({ length: 8 }, (_, i) => ({ suit: 'f', value: i + 1, isAka: false })),
   },
 ]

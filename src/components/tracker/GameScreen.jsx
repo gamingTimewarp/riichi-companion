@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import useGameStore from '../../stores/gameStore'
-import { getRoundName, getSeatWindName, shouldGameEnd } from '../../lib/scoring'
+import { getRoundName, getSeatWindName, shouldGameEnd, calculateFinalScores } from '../../lib/scoring'
 
 const WIND_CHARS = { East: '東', South: '南', West: '西', North: '北' }
 
@@ -42,8 +42,7 @@ function ScoreRow({ player, seatWind, riichiState, onToggleRiichi, relative, ret
   )
 }
 
-// #1: accepts players array to show names instead of P1/P2/P3/P4
-function LogEntry({ entry, players, isLast, onUndo }) {
+function LogEntry({ entry, players, onUndoClick }) {
   return (
     <div className="flex items-start gap-2 py-2 border-b border-slate-800 last:border-0">
       <div className="flex-1 min-w-0">
@@ -58,28 +57,41 @@ function LogEntry({ entry, players, isLast, onUndo }) {
           </div>
         )}
       </div>
-      {isLast && (
-        <button
-          onClick={onUndo}
-          className="text-xs text-rose-400 hover:text-rose-300 px-2 py-1 rounded border border-rose-800 hover:border-rose-600 transition-colors shrink-0"
-        >
-          Undo
-        </button>
-      )}
+      <button
+        onClick={onUndoClick}
+        className="text-xs text-rose-400 hover:text-rose-300 px-2 py-1 rounded border border-rose-800 hover:border-rose-600 transition-colors shrink-0"
+      >
+        Undo
+      </button>
     </div>
   )
 }
 
 export default function GameScreen({ onHandEntry, onDrawEntry, onNagashi, onChombo, onWallDice, onEndGame, riichiFlags, onToggleRiichi }) {
-  const { players, dealer, round, honba, riichiPool, log, gameType, entryMode, numPlayers, rules, undoLastEntry, setEntryMode } = useGameStore()
+  const { players, dealer, round, honba, riichiPool, log, gameType, entryMode, numPlayers, rules, undoToEntry, setEntryMode } = useGameStore()
   const [logOpen, setLogOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [confirmEnd, setConfirmEnd] = useState(false)
   const [relativeScore, setRelativeScore] = useState(false)
+  const [confirmUndoIndex, setConfirmUndoIndex] = useState(null)
+  const [projOpen, setProjOpen] = useState(false)
 
   const gameOver = shouldGameEnd(round, gameType)
   const returnPts = rules?.returnPts ?? (numPlayers === 3 ? 35000 : 30000)
   const riichiStickValue = rules?.riichiStickValue ?? 1000
+
+  // Score projection — computed once, used in the projection panel
+  const umaArr = rules?.uma?.slice(0, numPlayers) ?? (numPlayers === 3 ? [15000, 0, -15000] : [15000, 5000, -5000, -15000])
+  const { placement: proj_placement, uma: proj_uma, totals: proj_totals } =
+    calculateFinalScores(players, { uma: umaArr, returnPts, oka: rules?.oka ?? 0 })
+  const projRanked = players
+    .map((p, i) => ({ ...p, i, placement: proj_placement[i], uma: proj_uma[i], total: proj_totals[i] }))
+    .sort((a, b) => a.placement - b.placement)
+  // Bubble: gap in projected total to the player directly above is < 8000 pts
+  const BUBBLE_THRESHOLD = 8000
+  const projBubble = new Set(
+    projRanked.slice(1).filter((p, idx) => (projRanked[idx].total - p.total) < BUBBLE_THRESHOLD).map((p) => p.i)
+  )
 
   return (
     <div className="px-4 py-4 space-y-4 max-w-md mx-auto">
@@ -127,6 +139,49 @@ export default function GameScreen({ onHandEntry, onDrawEntry, onNagashi, onChom
         </div>
       </div>
       <p className="text-[11px] text-slate-700 -mt-2 text-center">Tap a row to mark/unmark riichi</p>
+
+      {/* Score projection panel */}
+      <div className="rounded-xl border border-slate-700 overflow-hidden">
+        <button
+          onClick={() => setProjOpen((v) => !v)}
+          className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+        >
+          <span>Score Projection</span>
+          <span>{projOpen ? '▲' : '▼'}</span>
+        </button>
+        {projOpen && (
+          <div className="px-4 pb-3 space-y-1.5">
+            <p className="text-[11px] text-slate-600 pb-1">Projected final totals if the game ended now.</p>
+            {projRanked.map((p) => {
+              const isBubble = projBubble.has(p.i)
+              const totalStr = `${p.total > 0 ? '+' : ''}${(p.total / 1000).toFixed(1)}k`
+              const PLACEMENT_COLOR = ['text-yellow-400', 'text-slate-300', 'text-amber-600', 'text-slate-500']
+              const PLACEMENT_LABEL = ['1st', '2nd', '3rd', '4th']
+              return (
+                <div key={p.i} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${isBubble ? 'bg-amber-900/15 border border-amber-800/40' : ''}`}>
+                  <span className={`text-xs font-bold w-7 shrink-0 ${PLACEMENT_COLOR[p.placement - 1]}`}>
+                    {PLACEMENT_LABEL[p.placement - 1]}
+                  </span>
+                  <span className="text-sm text-slate-200 flex-1 truncate">{p.name}</span>
+                  <span className={`text-sm tabular-nums font-bold ${p.total >= 0 ? 'text-sky-400' : 'text-rose-400'}`}>
+                    {totalStr}
+                  </span>
+                  <span className="text-xs text-slate-500 tabular-nums w-16 text-right">
+                    {p.score.toLocaleString()}
+                  </span>
+                  {isBubble && (
+                    <span className="text-[10px] text-amber-400 font-bold shrink-0">bubble</span>
+                  )}
+                </div>
+              )
+            })}
+            <p className="text-[10px] text-slate-600 pt-1">
+              Uma: {umaArr.map((v) => `${v > 0 ? '+' : ''}${(v / 1000).toFixed(0)}k`).join('/')}
+              {' · '}bubble = gap &lt; {(BUBBLE_THRESHOLD / 1000).toFixed(0)}k to next place
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* #5: Primary action buttons */}
       <div className="grid grid-cols-2 gap-3">
@@ -239,15 +294,49 @@ export default function GameScreen({ onHandEntry, onDrawEntry, onNagashi, onChom
             {log.length === 0 ? (
               <p className="text-slate-500 text-sm py-2">No hands recorded yet.</p>
             ) : (
-              [...log].reverse().map((entry, i) => (
-                <LogEntry
-                  key={i}
-                  entry={entry}
-                  players={players}
-                  isLast={i === 0}
-                  onUndo={i === 0 ? undoLastEntry : undefined}
-                />
-              ))
+              <>
+                {confirmUndoIndex !== null && (
+                  <div className="rounded-lg border border-rose-700 bg-rose-900/20 p-3 space-y-2 my-2">
+                    <p className="text-rose-300 text-sm font-medium">
+                      Undo {log.length - confirmUndoIndex} {log.length - confirmUndoIndex === 1 ? 'hand' : 'hands'}?
+                    </p>
+                    <p className="text-rose-400/70 text-xs">
+                      Reverts to the state before &ldquo;{log[confirmUndoIndex].label}&rdquo;.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setConfirmUndoIndex(null)}
+                        className="flex-1 py-1.5 rounded border border-slate-600 text-slate-300 text-xs hover:border-slate-400 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => { undoToEntry(confirmUndoIndex); setConfirmUndoIndex(null) }}
+                        className="flex-1 py-1.5 rounded bg-rose-700 hover:bg-rose-600 text-white text-xs font-medium transition-colors"
+                      >
+                        Confirm
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {[...log].reverse().map((entry, i) => {
+                  const logIndex = log.length - 1 - i
+                  return (
+                    <LogEntry
+                      key={i}
+                      entry={entry}
+                      players={players}
+                      onUndoClick={() => {
+                        if (i === 0) {
+                          undoToEntry(logIndex)
+                        } else {
+                          setConfirmUndoIndex(logIndex)
+                        }
+                      }}
+                    />
+                  )
+                })}
+              </>
             )}
           </div>
         )}

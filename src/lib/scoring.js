@@ -13,6 +13,23 @@ export function getRoundName(round) {
   return ROUND_NAMES[round] ?? `Round ${round}`
 }
 
+// "East 3" or "East 3 (2 honba)" when honba > 0
+export function formatRoundLabel(round, honba) {
+  const name = getRoundName(round)
+  return honba > 0 ? `${name} (${honba} honba)` : name
+}
+
+// Human-readable hand value: scoring tier for 5+ han, otherwise "Xhan Yfu"
+export function formatHandValue(han, fu) {
+  if (han >= 26) return 'Double Yakuman'
+  if (han >= 13) return 'Yakuman'
+  if (han >= 11) return 'Sanbaiman'
+  if (han >= 8)  return 'Baiman'
+  if (han >= 6)  return 'Haneman'
+  if (han >= 5)  return 'Mangan'
+  return `${han}han ${fu}fu`
+}
+
 // Returns riichi-ts wind integer: 27=East 28=South 29=West 30=North
 export function getRoundWind(round) {
   return round <= 4 ? 27 : 28
@@ -236,4 +253,35 @@ export function calculateNagashiPayments(playerIndex, dealerIndex, numPlayers = 
 export function shouldGameEnd(round, gameType) {
   const maxRound = gameType === 'tonpuusen' ? 4 : 8
   return round > maxRound
+}
+
+/**
+ * Generate the list of point options for quick-entry mode.
+ * Enumerates all valid han/fu combinations and collects the unique
+ * non-dealer-ron and dealer-ron totals, so the list reflects the
+ * active ruleset (kiriage mangan, kazoe yakuman policy, etc.).
+ *
+ * For 4-player games, tsumo totals equal ron totals so no extra entries
+ * are needed. For 3-player the tsumo split differs, but quick mode
+ * already approximates that split from the chosen total.
+ */
+export function generateQuickPointOptions({ kiriageMangan = false, kazoeYakumanPolicy = 'enabled' } = {}) {
+  const FU_LIST = [20, 25, 30, 40, 50, 60, 70, 80, 90, 100, 110]
+  const HAN_LIST = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 26]
+  const values = new Set()
+
+  for (const han of HAN_LIST) {
+    for (const fu of FU_LIST) {
+      // 25fu is chiitoitsu-only (2 han closed); skip other han counts
+      if (fu === 25 && han !== 2) continue
+      // 20fu + 1 han produces sub-1000 totals that never occur in practice
+      if (fu === 20 && han === 1) continue
+
+      const base = calculateBasePoints(han, fu, { kiriageMangan, kazoeYakumanPolicy })
+      values.add(roundUp100(base * 4)) // non-dealer ron total
+      values.add(roundUp100(base * 6)) // dealer ron total
+    }
+  }
+
+  return [...values].sort((a, b) => a - b)
 }

@@ -1,12 +1,13 @@
 import { PICKER_ROWS } from '../../lib/tiles.js'
 import TileDisplay from './TileDisplay.jsx'
 
-const SUIT_LABEL = { m: 'Man', p: 'Pin', s: 'Sou', z: 'Honor' }
+const SUIT_LABEL = { m: 'Man', p: 'Pin', s: 'Sou', z: 'Honor', f: 'Extra Tiles' }
 const SUIT_LABEL_COLOR = {
   m: 'text-rose-400',
   p: 'text-sky-400',
   s: 'text-emerald-400',
   z: 'text-violet-400',
+  f: 'text-amber-400',
 }
 
 /**
@@ -17,23 +18,29 @@ const SUIT_LABEL_COLOR = {
  *   onAdd   — (tile) => void — add tile to hand
  *   maxTiles — max hand size (default 14)
  */
-export default function TilePicker({ tiles, onAdd, maxTiles = 14, allowAka = true, redFives = { m: 1, p: 1, s: 1 } }) {
+export default function TilePicker({ tiles, onAdd, maxTiles = 14, allowAka = true, redFives = { m: 1, p: 1, s: 1 }, otherHandTiles = [] }) {
   const handFull = tiles.length >= maxTiles
 
-  // Count of each (suit+value+isAka) combination in hand
+  // Count of each (suit+value+isAka) combination in this hand only
   function countInHand(suit, value, isAka) {
     return tiles.filter(
       (t) => t.suit === suit && t.value === value && t.isAka === isAka
     ).length
   }
 
-  // Total copies of a given riichi-ts integer in hand (regular + aka share the same int)
+  // Total copies across this hand AND other winner hands (enforces the 4-copy pool)
   function totalCopiesInHand(suit, value) {
-    return tiles.filter((t) => t.suit === suit && t.value === value).length
+    const local = tiles.filter((t) => t.suit === suit && t.value === value).length
+    const others = otherHandTiles.filter((t) => t.suit === suit && t.value === value).length
+    return local + others
   }
 
   function isDisabled(tile) {
     if (handFull) return true
+    if (tile.suit === 'f') {
+      // Each extra tile exists only once in the set
+      return totalCopiesInHand(tile.suit, tile.value) >= 1
+    }
     if (tile.isAka) {
       if (!allowAka) return true
       // Only 1 aka per suit; also constrained by total 4-of-a-kind

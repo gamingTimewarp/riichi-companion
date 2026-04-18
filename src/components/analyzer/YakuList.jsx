@@ -1,5 +1,16 @@
+import InfoTooltip from '../InfoTooltip.jsx'
+import { YAKU_REF } from '../../lib/referenceData.js'
+
+// key → description lookup built from reference data
+const YAKU_DESC = {}
+for (const entry of YAKU_REF) {
+  for (const key of entry.keys) {
+    YAKU_DESC[key] = entry.description
+  }
+}
+
 // Maps riichi-ts yaku key names → display names
-const YAKU_NAMES = {
+export const YAKU_NAMES = {
   // Situational / bonus
   menzentsumo: 'Menzen Tsumo',
   riichi: 'Riichi',
@@ -61,6 +72,8 @@ const YAKU_NAMES = {
   // Bonus
   dora: 'Dora',
   akadora: 'Aka Dora',
+  nukidora: 'Nukidora (北)',
+  extradora: 'Extra Dora (花)',
 }
 
 function displayName(key) {
@@ -94,7 +107,10 @@ export default function YakuList({ yaku, yakuman }) {
 
       {entries.map(([key, han]) => (
         <div key={key} className="flex items-center justify-between">
-          <span className="text-slate-200 text-sm">{displayName(key)}</span>
+          <span className="flex items-center">
+            <span className="text-slate-200 text-sm">{displayName(key)}</span>
+            {YAKU_DESC[key] && <InfoTooltip text={YAKU_DESC[key]} />}
+          </span>
           <span className="text-xs font-mono bg-slate-700 text-slate-300 px-2 py-0.5 rounded">
             {han} han
           </span>

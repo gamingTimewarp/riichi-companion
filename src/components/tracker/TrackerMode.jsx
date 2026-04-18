@@ -12,8 +12,8 @@ import { shouldGameEnd } from '../../lib/scoring'
 
 function BustModal({ bustInfo, onEndGame, onContinue }) {
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-end">
-      <div className="w-full max-w-md mx-auto bg-slate-900 border-t border-slate-700 rounded-t-2xl p-6 space-y-4">
+    <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl p-6 space-y-4">
         <div>
           <h3 className="text-lg font-bold text-rose-400">Bust!</h3>
           <p className="text-slate-300 text-sm mt-1">
@@ -94,6 +94,20 @@ export default function TrackerMode() {
     setScreen('game')
   }
 
+  function afterFalseTenpaiChombo() {
+    resetRiichi()
+    const state = useGameStore.getState()
+    const busted = state.players.find((p) => p.score < 0)
+    if (busted) {
+      if (state.rules.bustEndsGame) {
+        setScreen('end')
+        return
+      }
+      setBustInfo({ name: busted.name, score: busted.score })
+    }
+    setScreen('game')
+  }
+
   return (
     <div>
       {bustInfo && (
@@ -143,7 +157,9 @@ export default function TrackerMode() {
       )}
       {screen === 'chombo' && (
         <ChomboSheet
+          riichiFlags={riichiFlags}
           onConfirm={afterChombo}
+          onFalseTenpaiConfirm={afterFalseTenpaiChombo}
           onCancel={() => setScreen('game')}
         />
       )}

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import useSettingsStore from '../../stores/settingsStore'
 import { getRulesValidationErrors } from '../../lib/rules.js'
 import { importJSON } from '../../lib/storage.js'
+import InfoTooltip from '../InfoTooltip.jsx'
 
 function downloadJSON(data, filename) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -113,7 +114,10 @@ export default function SettingsMode() {
 
 
       <label className="flex items-center justify-between text-sm text-slate-300">
-        <span>Lock preset edits for {numPlayers}p</span>
+        <span className="flex items-center">
+          Lock preset edits for {numPlayers}p
+          <InfoTooltip text="Prevents accidental rule changes when using a named preset. Toggle off to edit rules manually." />
+        </span>
         <input
           type="checkbox"
           checked={presetLocked}
@@ -147,33 +151,74 @@ export default function SettingsMode() {
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-sm">
-        <label className="text-slate-300">Start score</label>
+        <label className="text-slate-300 flex items-center">
+          Start score
+          <InfoTooltip text="Points each player starts with. Common values are 25,000 and 30,000." />
+        </label>
         <input type="number" min={10000} step={100} value={rules.startScore} onChange={(e) => updateRule('startScore', Number(e.target.value) || 0)} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100" />
 
-        <label className="text-slate-300">Return points</label>
+        <label className="text-slate-300 flex items-center">
+          Return points
+          <InfoTooltip text="The target score used to calculate end-game point differences. Players above this gain points; players below lose points." />
+        </label>
         <input type="number" min={10000} step={100} value={rules.returnPts} onChange={(e) => updateRule('returnPts', Number(e.target.value) || 0)} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100" />
 
-        <label className="text-slate-300">Oka (1st place bonus)</label>
+        <label className="text-slate-300 flex items-center">
+          Oka (1st place bonus)
+          <InfoTooltip text="Bonus points awarded to 1st place, funded by the other players. Derived from the gap between start score and return points." />
+        </label>
         <input type="number" value={rules.oka} onChange={(e) => updateRule('oka', Number(e.target.value) || 0)} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100" />
+        {(() => {
+          const calc = (rules.returnPts - rules.startScore) * numPlayers
+          return calc > 0 ? (
+            <div className="col-span-2 -mt-1 flex items-center gap-2">
+              <span className="text-xs text-slate-500">
+                ({rules.returnPts.toLocaleString()} − {rules.startScore.toLocaleString()}) × {numPlayers} = <span className="text-slate-400">{calc.toLocaleString()}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => updateRule('oka', calc)}
+                className="text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-400 hover:border-sky-500 hover:text-sky-300 transition-colors"
+              >
+                Use
+              </button>
+            </div>
+          ) : null
+        })()}
 
-        <label className="text-slate-300">Riichi stick value</label>
+        <label className="text-slate-300 flex items-center">
+          Riichi stick value
+          <InfoTooltip text="Points paid when declaring riichi. Sticks left on the table are collected by the next hand winner. Standard is 1,000." />
+        </label>
         <input type="number" min={100} step={100} value={rules.riichiStickValue} onChange={(e) => updateRule('riichiStickValue', Number(e.target.value) || 0)} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100" />
 
-        <label className="text-slate-300">Honba / payer</label>
+        <label className="text-slate-300 flex items-center">
+          Honba / payer
+          <InfoTooltip text="Extra points added per honba counter, paid per paying player. Standard is 100 per payer — so 300 extra total in a 4-player ron." />
+        </label>
         <input type="number" min={0} step={100} value={rules.honbaValuePerPayer} onChange={(e) => updateRule('honbaValuePerPayer', Number(e.target.value) || 0)} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100" />
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-sm">
-        <label className="text-slate-300">Open tanyao (kuitan)</label>
+        <label className="text-slate-300 flex items-center">
+          Open tanyao (kuitan)
+          <InfoTooltip text="Allows the tanyao (all-simples) yaku with an open (called) hand. Disabled in some traditional rulesets." />
+        </label>
         <input type="checkbox" checked={rules.openTanyao} onChange={(e) => updateRule('openTanyao', e.target.checked)} />
 
-        <label className="text-slate-300">Enable red dora</label>
+        <label className="text-slate-300 flex items-center">
+          Enable red dora
+          <InfoTooltip text="Adds special red five tiles to the deck. Each red five counts as one bonus dora." />
+        </label>
         <input type="checkbox" checked={rules.redDoraEnabled} onChange={(e) => updateRule('redDoraEnabled', e.target.checked)} />
       </div>
 
       {rules.redDoraEnabled && (
         <div className="space-y-1">
-          <div className="text-xs text-slate-400 uppercase tracking-wide">Red fives by suit</div>
+          <div className="text-sm text-slate-300 flex items-center">
+            Red fives by suit
+            <InfoTooltip text="Number of red fives per suit. m = man (characters), p = pin (circles), s = sou (bamboo)." />
+          </div>
           <div className="grid grid-cols-3 gap-2">
             {['m', 'p', 's'].map((suit) => (
               <label key={suit} className="flex items-center gap-2 text-slate-300 text-sm">
@@ -192,7 +237,10 @@ export default function SettingsMode() {
       )}
 
       <div className="space-y-1">
-        <div className="text-xs text-slate-400 uppercase tracking-wide">Uma</div>
+        <div className="text-sm text-slate-300 flex items-center">
+          Uma
+          <InfoTooltip text="End-game bonuses and penalties by finishing position, entered from 1st to last place. E.g. +20, +10, −10, −20." />
+        </div>
         <div className="grid grid-cols-4 gap-2">
           {Array.from({ length: numPlayers }, (_, i) => (
             <input
@@ -207,19 +255,28 @@ export default function SettingsMode() {
       </div>
 
       <label className="flex items-center justify-between text-sm text-slate-300">
-        <span>Kiriage mangan</span>
+        <span className="flex items-center">
+          Kiriage mangan
+          <InfoTooltip text="Rounds up hands at 3 han 60 fu or 4 han 30 fu to a full mangan payout." />
+        </span>
         <input type="checkbox" checked={rules.kiriageMangan} onChange={(e) => updateRule('kiriageMangan', e.target.checked)} />
       </label>
 
       <div className="grid grid-cols-2 gap-2 text-sm">
-        <label className="text-slate-300">Kazoe yakuman policy</label>
+        <label className="text-slate-300 flex items-center">
+          Kazoe yakuman policy
+          <InfoTooltip text="How to score hands with 13+ han. Enabled: full yakuman. Capped: capped at sanbaiman. Disabled: always scored as sanbaiman." />
+        </label>
         <select value={rules.kazoeYakumanPolicy} onChange={(e) => updateRule('kazoeYakumanPolicy', e.target.value)} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100">
           <option value="enabled">Enabled</option>
           <option value="capped">Capped (Sanbaiman)</option>
           <option value="disabled">Disabled</option>
         </select>
 
-        <label className="text-slate-300">Multiple ron</label>
+        <label className="text-slate-300 flex items-center">
+          Multiple ron
+          <InfoTooltip text="What happens when two players win off the same discard. Head-bump (atamahane) gives the win only to the player sitting closest after the discarder." />
+        </label>
         <select value={rules.multipleRon} onChange={(e) => updateRule('multipleRon', e.target.value)} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100">
           <option value="allow">Allow</option>
           <option value="head-bump">Head-bump (Atamahane)</option>
@@ -227,22 +284,34 @@ export default function SettingsMode() {
       </div>
 
       <label className="flex items-center justify-between text-sm text-slate-300">
-        <span>Bust ends game immediately</span>
+        <span className="flex items-center">
+          Bust ends game immediately
+          <InfoTooltip text="Ends the game as soon as any player's score drops to 0 or below, even mid-round." />
+        </span>
         <input type="checkbox" checked={rules.bustEndsGame} onChange={(e) => updateRule('bustEndsGame', e.target.checked)} />
       </label>
 
       <label className="flex items-center justify-between text-sm text-slate-300">
-        <span>All-tenpai keeps dealer</span>
+        <span className="flex items-center">
+          All-tenpai keeps dealer
+          <InfoTooltip text="On a drawn round (ryuukyoku), if all players are in tenpai the dealer retains their seat instead of passing." />
+        </span>
         <input type="checkbox" checked={rules.allTenpaiDealerStays} onChange={(e) => updateRule('allTenpaiDealerStays', e.target.checked)} />
       </label>
 
       <label className="flex items-center justify-between text-sm text-slate-300">
-        <span>Agari-yame enabled</span>
+        <span className="flex items-center">
+          Agari-yame enabled
+          <InfoTooltip text="In the final round, the dealer may choose to end the game by winning rather than continuing play." />
+        </span>
         <input type="checkbox" checked={rules.agariYame} onChange={(e) => updateRule('agariYame', e.target.checked)} />
       </label>
 
       <label className="flex items-center justify-between text-sm text-slate-300">
-        <span>Allow West-round extension</span>
+        <span className="flex items-center">
+          Allow West-round extension
+          <InfoTooltip up text="If no player has passed the return-point threshold at the end of South round, play continues into West round." />
+        </span>
         <input type="checkbox" checked={rules.allowWestRoundExtension} onChange={(e) => updateRule('allowWestRoundExtension', e.target.checked)} />
       </label>
     </div>

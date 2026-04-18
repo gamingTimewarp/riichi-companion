@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import useGameStore from '../../stores/gameStore'
 import useSettingsStore from '../../stores/settingsStore'
 import { presetRules, sanitizeRules } from '../../lib/rules.js'
+import InfoTooltip from '../InfoTooltip.jsx'
 
 export default function GameSetup({ onStart }) {
   const startGame = useGameStore((s) => s.startGame)
@@ -219,41 +220,63 @@ export default function GameSetup({ onStart }) {
             <div className="space-y-1">
               <div className="text-xs text-slate-400 uppercase tracking-wide">Quick preset</div>
               <div className="flex gap-2">
-                {['ema', 'wrc', 'mleague'].map((preset) => (
+                {[
+                  { value: 'ema', label: 'EMA' },
+                  { value: 'wrc', label: 'WRC' },
+                  { value: 'mleague', label: 'M-League' },
+                ].map(({ value, label }) => (
                   <button
-                    key={preset}
+                    key={value}
                     type="button"
-                    onClick={() => setRulesOverrides(presetRules(preset, numPlayers))}
-                    className={`flex-1 py-2 rounded border text-xs ${effectiveRules.preset === preset ? 'bg-sky-700 border-sky-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300'}`}
+                    onClick={() => setRulesOverrides(presetRules(value, numPlayers))}
+                    className={`flex-1 py-2 rounded border text-xs ${effectiveRules.preset === value ? 'bg-sky-700 border-sky-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300'}`}
                   >
-                    {preset}
+                    {label}
                   </button>
                 ))}
               </div>
             </div>
 
             <label className="flex items-center justify-between text-sm text-slate-300">
-              <span>Open tanyao</span>
+              <span className="flex items-center">
+                Open tanyao
+                <InfoTooltip text="Allows the tanyao (all-simples) yaku with an open (called) hand. Disabled in some traditional rulesets." />
+              </span>
               <input type="checkbox" checked={effectiveRules.openTanyao} onChange={(e) => setRuleOverride('openTanyao', e.target.checked)} />
             </label>
             <label className="flex items-center justify-between text-sm text-slate-300">
-              <span>Enable red dora</span>
+              <span className="flex items-center">
+                Enable red dora
+                <InfoTooltip text="Adds special red five tiles to the deck. Each red five counts as one bonus dora." />
+              </span>
               <input type="checkbox" checked={effectiveRules.redDoraEnabled} onChange={(e) => setRuleOverride('redDoraEnabled', e.target.checked)} />
             </label>
             <label className="flex items-center justify-between text-sm text-slate-300">
-              <span>Bust ends game immediately</span>
+              <span className="flex items-center">
+                Bust ends game immediately
+                <InfoTooltip text="Ends the game as soon as any player's score drops to 0 or below, even mid-round." />
+              </span>
               <input type="checkbox" checked={effectiveRules.bustEndsGame} onChange={(e) => setRuleOverride('bustEndsGame', e.target.checked)} />
             </label>
             <label className="flex items-center justify-between text-sm text-slate-300">
-              <span>All-tenpai keeps dealer</span>
+              <span className="flex items-center">
+                All-tenpai keeps dealer
+                <InfoTooltip text="On a drawn round (ryuukyoku), if all players are in tenpai the dealer retains their seat instead of passing." />
+              </span>
               <input type="checkbox" checked={effectiveRules.allTenpaiDealerStays} onChange={(e) => setRuleOverride('allTenpaiDealerStays', e.target.checked)} />
             </label>
             <label className="flex items-center justify-between text-sm text-slate-300">
-              <span>Kiriage mangan</span>
+              <span className="flex items-center">
+                Kiriage mangan
+                <InfoTooltip text="Rounds up hands at 3 han 60 fu or 4 han 30 fu to a full mangan payout." />
+              </span>
               <input type="checkbox" checked={effectiveRules.kiriageMangan} onChange={(e) => setRuleOverride('kiriageMangan', e.target.checked)} />
             </label>
             <div className="grid grid-cols-2 gap-2 text-sm items-center">
-              <label className="text-slate-300">Kazoe policy</label>
+              <label className="text-slate-300 flex items-center">
+                Kazoe policy
+                <InfoTooltip text="How to score hands with 13+ han. Enabled: full yakuman. Capped: capped at sanbaiman. Disabled: always scored as sanbaiman." />
+              </label>
               <select value={effectiveRules.kazoeYakumanPolicy} onChange={(e) => setRuleOverride('kazoeYakumanPolicy', e.target.value)} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100">
                 <option value="enabled">Enabled</option>
                 <option value="capped">Capped</option>
@@ -270,7 +293,6 @@ export default function GameSetup({ onStart }) {
 
       <button
         onClick={handleStart}
-        disabled={rulesErrors.length > 0}
         className="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white font-semibold rounded-xl transition-colors"
       >
         Start &amp; Roll for Dealer

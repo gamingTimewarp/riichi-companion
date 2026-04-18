@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import useGameStore from '../../stores/gameStore'
+import WallVisualizer from './WallVisualizer'
 
 const DIE_FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅']
 
@@ -130,18 +131,13 @@ function DealerDice({ players, onConfirm }) {
   )
 }
 
-// Wall mode: 2 dice, sum determines wall break.
+// Wall mode: 2 dice, sum determines wall break. Shows full wall visualizer.
 function WallDice({ onDone }) {
   const numPlayers = useGameStore((s) => s.numPlayers)
   const [dice, setDice] = useState([null, null])
   const [rolling, setRolling] = useState(false)
 
   const sum = dice[0] && dice[1] ? dice[0] + dice[1] : null
-  // Which player breaks wall: dealer counts anti-clockwise, 1 = dealer
-  const wallPlayer = sum ? ((sum - 1) % numPlayers) + 1 : null
-  const wallNames = numPlayers === 3
-    ? ['Dealer (East)', 'Right (South)', 'Across (West)']
-    : ['Dealer (East)', 'Right (South)', 'Across (West)', 'Left (North)']
 
   function roll() {
     setRolling(true)
@@ -156,25 +152,30 @@ function WallDice({ onDone }) {
       <div>
         <h2 className="text-xl font-bold text-slate-100">Wall Break</h2>
         <p className="text-slate-400 text-sm mt-1">
-          Roll 2 dice. Count from the right end of that player's wall.
+          Roll 2 dice — the sum determines which wall is broken and where.
         </p>
       </div>
 
+      {/* Dice */}
       <div className="flex justify-center gap-8">
         {dice.map((d, i) => (
           <DieFace key={i} value={d} rolling={rolling} onClick={roll} />
         ))}
       </div>
 
+      {/* Dice sum badge */}
       {sum !== null && (
-        <div className="bg-slate-800 rounded-xl p-4 text-center space-y-1">
-          <div className="text-3xl font-bold text-sky-400">{sum}</div>
-          <div className="text-slate-300 text-sm">
-            Break: <span className="font-semibold text-white">{wallNames[wallPlayer - 1]}</span>
-          </div>
-          <div className="text-slate-400 text-xs">
-            Count {sum} tiles from the right end of that wall
-          </div>
+        <div className="bg-slate-800 rounded-xl px-4 py-2 text-center">
+          <span className="text-3xl font-bold text-sky-400">{sum}</span>
+          {' '}
+          <span className="text-slate-400 text-sm">= {dice[0]} + {dice[1]}</span>
+        </div>
+      )}
+
+      {/* Wall visualization */}
+      {sum !== null && (
+        <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-4">
+          <WallVisualizer sum={sum} numPlayers={numPlayers} />
         </div>
       )}
 

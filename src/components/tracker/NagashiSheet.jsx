@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import useGameStore from '../../stores/gameStore'
-import { calculateNagashiPayments } from '../../lib/scoring'
-import { getSeatWindName } from '../../lib/scoring'
+import { calculateNagashiPayments, getSeatWindName, formatRoundLabel } from '../../lib/scoring'
 
 export default function NagashiSheet({ onConfirm, onCancel }) {
-  const { players, dealer, numPlayers, updateScores, addLogEntry, advanceAfterDraw, getSnapshot } = useGameStore()
+  const { players, dealer, round, honba, numPlayers, updateScores, addLogEntry, advanceAfterDraw, getSnapshot } = useGameStore()
   const [winner, setWinner] = useState(null)
 
   const payment = winner !== null ? calculateNagashiPayments(winner, dealer, numPlayers) : null
@@ -15,7 +14,7 @@ export default function NagashiSheet({ onConfirm, onCancel }) {
     updateScores(payment.deltas)
     addLogEntry({
       snapshot,
-      label: `Nagashi Mangan — ${players[winner].name}`,
+      label: `${formatRoundLabel(round, honba)} · Nagashi Mangan — ${players[winner].name}`,
       deltas: payment.deltas,
       type: 'nagashi',
     })

@@ -28,11 +28,18 @@ function isChiTiles(tiles) {
 
 /**
  * Returns list of valid meld types for the given pendingTiles.
- * Each entry: { type: 'pon'|'chi'|'ankan'|'openkan', label: string }
+ * Each entry: { type: 'pon'|'chi'|'ankan'|'openkan'|'nukidora', label: string }
  */
 function detectValidMelds(pendingTiles) {
   const valid = []
-  if (pendingTiles.length === 3) {
+  if (pendingTiles.length === 1) {
+    const t = pendingTiles[0]
+    if (t.suit === 'z' && t.value === 4) {
+      valid.push({ type: 'nukidora', label: 'Nukidora (北抜き)' })
+    } else if (t.suit === 'f') {
+      valid.push({ type: 'extradora', label: 'Extra Dora (花牌)' })
+    }
+  } else if (pendingTiles.length === 3) {
     if (areSameTile(pendingTiles)) {
       valid.push({ type: 'pon', label: 'Pon (open triplet)' })
       valid.push({ type: 'openkan', label: 'Open Kan (add 4th copy)' })
@@ -70,20 +77,23 @@ export default function MeldEntry({
   onConfirmMeld,
   onCancelSelect,
   isSelecting = false,
+  allowNukidora = true,
 }) {
-  const validMelds = detectValidMelds(pendingTiles)
+  const validMelds = detectValidMelds(pendingTiles).filter(
+    (m) => m.type !== 'nukidora' || allowNukidora,
+  )
 
   function handleConfirm(meldType) {
+    if (meldType === 'nukidora' || meldType === 'extradora') {
+      onConfirmMeld?.({ type: meldType, open: false, tiles: pendingTiles })
+      return
+    }
+
     let tiles = pendingTiles
     let open = true
 
-    if (meldType === 'pon') {
-      open = true
-    } else if (meldType === 'chi') {
-      open = true
-    } else if (meldType === 'openkan') {
+    if (meldType === 'openkan') {
       // Auto-add one more copy of the same tile
-      open = true
       tiles = [...pendingTiles, { ...pendingTiles[0] }]
     } else if (meldType === 'ankan') {
       open = false

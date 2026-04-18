@@ -131,6 +131,23 @@ const useGameStore = create(
           }
         }),
 
+      // Undo back to (and including) the entry at `index`, restoring the
+      // snapshot stored on that entry (i.e. state before that hand was played).
+      undoToEntry: (index) =>
+        set((state) => {
+          if (index < 0 || index >= state.log.length) return {}
+          const snap = state.log[index].snapshot
+          return {
+            log: state.log.slice(0, index),
+            players: snap.players,
+            dealer: snap.dealer,
+            round: snap.round,
+            honba: snap.honba,
+            riichiPool: snap.riichiPool,
+            rules: snap.rules ? sanitizeRules(snap.rules, state.numPlayers) : state.rules,
+          }
+        }),
+
       applyRiichiDeclaration: (playerIndex) =>
         set((state) => ({
           players: state.players.map((p, i) =>

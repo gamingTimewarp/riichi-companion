@@ -4,41 +4,34 @@ import TrackerMode from './components/tracker/TrackerMode'
 import ReferenceMode from './components/reference/ReferenceMode'
 import SettingsMode from './components/settings/SettingsMode'
 import PrivacyMode from './components/settings/PrivacyMode'
+import HistoryMode from './components/history/HistoryMode'
 
 function BottomNav() {
-  const base = 'flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium transition-colors'
+  const base = 'flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors'
   const active = 'text-sky-400'
   const inactive = 'text-slate-400 hover:text-slate-200'
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 flex z-50">
-      <NavLink
-        to="/analyzer"
-        className={({ isActive }) => `${base} ${isActive ? active : inactive}`}
-      >
-        <span className="text-xl">🀇</span>
-        <span>Hand Analyzer</span>
+      <NavLink to="/analyzer" className={({ isActive }) => `${base} ${isActive ? active : inactive}`}>
+        <span className="text-xl leading-none">🀇</span>
+        <span>Analyzer</span>
       </NavLink>
-      <NavLink
-        to="/tracker"
-        className={({ isActive }) => `${base} ${isActive ? active : inactive}`}
-      >
-        <span className="text-xl">📊</span>
-        <span>Game Tracker</span>
+      <NavLink to="/tracker" className={({ isActive }) => `${base} ${isActive ? active : inactive}`}>
+        <span className="text-xl leading-none">📊</span>
+        <span>Tracker</span>
       </NavLink>
-      <NavLink
-        to="/settings"
-        className={({ isActive }) => `${base} ${isActive ? active : inactive}`}
-      >
-        <span className="text-xl">⚙️</span>
-        <span>Settings</span>
+      <NavLink to="/history" className={({ isActive }) => `${base} ${isActive ? active : inactive}`}>
+        <span className="text-xl leading-none">🗒️</span>
+        <span>History</span>
       </NavLink>
-      <NavLink
-        to="/reference"
-        className={({ isActive }) => `${base} ${isActive ? active : inactive}`}
-      >
-        <span className="text-xl">📖</span>
+      <NavLink to="/reference" className={({ isActive }) => `${base} ${isActive ? active : inactive}`}>
+        <span className="text-xl leading-none">📖</span>
         <span>Reference</span>
+      </NavLink>
+      <NavLink to="/settings" className={({ isActive }) => `${base} ${isActive ? active : inactive}`}>
+        <span className="text-xl leading-none">⚙️</span>
+        <span>Settings</span>
       </NavLink>
     </nav>
   )
@@ -102,6 +95,19 @@ export default function App() {
               <TopBar title="Privacy" />
               <main className="pt-14 pb-16 min-h-dvh">
                 <PrivacyMode />
+              </main>
+              <BottomNav />
+            </>
+          }
+        />
+
+        <Route
+          path="/history"
+          element={
+            <>
+              <TopBar title="Game History" />
+              <main className="pt-14 pb-16 min-h-dvh">
+                <HistoryMode />
               </main>
               <BottomNav />
             </>

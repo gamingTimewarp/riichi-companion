@@ -26,6 +26,7 @@ const SIZE = {
  */
 export default function TileDisplay({ tile, size = 'md', count, disabled, onClick, className = '' }) {
   const unicode = tileToUnicode(tile)
+  const label = tileLabel(tile)
   const suitStyle = SUIT_STYLE[tile.suit] ?? SUIT_STYLE.z
   const s = SIZE[size] ?? SIZE.md
 
@@ -34,10 +35,9 @@ export default function TileDisplay({ tile, size = 'md', count, disabled, onClic
       type="button"
       onClick={onClick}
       disabled={disabled}
-      title={tileLabel(tile)}
-      aria-label={tileLabel(tile)}
+      aria-label={label}
       className={[
-        'relative flex items-center justify-center rounded border select-none transition-all',
+        'relative group flex items-center justify-center rounded border select-none transition-all',
         suitStyle,
         s.wrap,
         tile.isAka ? 'ring-1 ring-red-400' : '',
@@ -50,6 +50,10 @@ export default function TileDisplay({ tile, size = 'md', count, disabled, onClic
       ].join(' ')}
     >
       <span className={`${s.text} leading-none`}>{unicode}</span>
+
+      <span className="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[10px] text-slate-200 opacity-0 transition-opacity group-hover:opacity-100">
+        {label}
+      </span>
 
       {count > 0 && (
         <span

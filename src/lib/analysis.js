@@ -18,6 +18,7 @@
 import { Riichi } from 'riichi-ts'
 import { tilesToRiichiInts, tileToRiichi, indicatorToDoraInt } from './tiles.js'
 import { getFuBreakdown } from './fuCalc.js'
+import { calculateBasePoints } from './scoring.js'
 
 // Terminals: 1m/9m/1p/9p/1s/9s + all 7 honors (riichi-ts ints)
 const TERMINAL_HONOR_SET = new Set([0, 8, 9, 17, 18, 26, 27, 28, 29, 30, 31, 32, 33])
@@ -43,6 +44,10 @@ function detectKyuushu(tiles) {
  * @returns {AnalysisResult}
  */
 export function analyseHand(tiles, opts = {}) {
+  // Strip extra tiles (suit 'f') — they are declared separately as bonus dora and
+  // must never be passed to riichi-ts.
+  tiles = tiles.filter((t) => t.suit !== 'f')
+
   const empty = { shanten: Infinity, waits: [], isAgari: false, yaku: {}, yakuman: 0, fu: 0, han: 0, ten: 0 }
   if (tiles.length === 0) return empty
 
@@ -57,8 +62,9 @@ export function analyseHand(tiles, opts = {}) {
 
   const allowAka = opts.allowAka !== false
   const redLimits = opts.redFives ?? { m: 1, p: 1, s: 1 }
+  const allTiles = [...tiles, ...melds.flatMap((m) => m.tiles)]
   const akaCountsBySuit = allowAka
-    ? tiles.filter((t) => t.isAka).reduce((acc, t) => {
+    ? allTiles.filter((t) => t.isAka).reduce((acc, t) => {
       acc[t.suit] = (acc[t.suit] ?? 0) + 1
       return acc
     }, { m: 0, p: 0, s: 0 })
@@ -79,6 +85,7 @@ export function analyseHand(tiles, opts = {}) {
     doraIndicators = [],
     uraIndicators = [],
   } = opts
+  const numPlayers = opts.numPlayers ?? 4
   const allowKuitan = opts.kuitan !== false
 
   // Convert indicator tiles to actual dora tile integers for riichi-ts.
@@ -148,19 +155,76 @@ export function analyseHand(tiles, opts = {}) {
   // Kyuushu kyuuhai: 13-tile hand with 9+ distinct terminal/honor types
   const isKyuushu = tiles.length === 13 && melds.length === 0 && detectKyuushu(tiles)
 
+  // riichi-ts computes `ten` assuming 4 payers. Recompute from per-player amounts when
+  // outgoingTen is available so the total is correct for any numPlayers (e.g. 3p tsumo).
+  // outgoingTen.oya = dealer pays, outgoingTen.ko = each non-dealer pays.
+  const outgoingTen = result.outgoingTen
+  let ten = result.ten ?? 0
+  if (isAgari && !isRon && outgoingTen) {
+    const isDealer = jikaze === 27
+    ten = isDealer
+      ? outgoingTen.ko * (numPlayers - 1)               // all non-dealers pay ko
+      : outgoingTen.oya + outgoingTen.ko * (numPlayers - 2) // dealer pays oya, others pay ko
+  }
+
   return {
     shanten,
     waits,
     isAgari,
+    ronTile,  // TileObject | null — the claimed winning tile for a ron, null for tsumo/shanten
     yaku: yakuObj,
     yakuman: result.yakuman ?? 0,
     fu: result.fu ?? 0,
     han: result.han ?? 0,
-    ten: result.ten ?? 0,
-    outgoingTen: result.outgoingTen,  // { oya, ko } dealer/non-dealer breakdown
+    ten,
+    outgoingTen,  // { oya, ko } dealer/non-dealer breakdown
     noYaku: result.text === 'no yaku',
     fuBreakdown,
     isKyuushu,
     raw: result,
   }
+}
+
+const r100 = (n) => Math.ceil(n / 100) * 100
+
+/**
+ * Augments an analysis result with declared bonus dora tiles:
+ *   - nukidora (北抜き): North tiles declared in sanma
+ *   - extradora: flower/season tiles declared in variants that use them
+ * Each declared tile adds +1 han. Also recomputes ten/outgoingTen.
+ *
+ * @param {object|null} result        — raw analyseHand result
+ * @param {number} nukidoraCount      — North tiles declared as nukidora
+ * @param {object} winOpts            — { tsumo, jikaze }
+ * @param {object} [rules]            — { kiriageMangan, kazoeYakumanPolicy }
+ * @param {number} [extraDoraCount]   — flower/season tiles declared as extra dora
+ */
+export function augmentNukidora(result, nukidoraCount, winOpts, rules = {}, extraDoraCount = 0) {
+  const count = nukidoraCount + extraDoraCount
+  if (!count || !result?.isAgari || result?.noYaku) return result
+
+  const augHan = result.han + count
+  const augYaku = { ...result.yaku }
+  if (nukidoraCount > 0) augYaku.nukidora = nukidoraCount
+  if (extraDoraCount > 0) augYaku.extradora = extraDoraCount
+  const isDealer = (winOpts.jikaze ?? 27) === 27
+  const numPlayers = rules.numPlayers ?? 4
+  const base = calculateBasePoints(augHan, result.fu, {
+    kiriageMangan: rules.kiriageMangan ?? false,
+    kazoeYakumanPolicy: rules.kazoeYakumanPolicy ?? 'enabled',
+  })
+
+  let ten, outgoingTen
+  if (!(winOpts.tsumo ?? true)) {
+    ten = r100(isDealer ? base * 6 : base * 4)
+  } else {
+    const dp = r100(base * 2)
+    const np = r100(base)
+    outgoingTen = { oya: dp, ko: isDealer ? dp : np }
+    ten = isDealer
+      ? dp * (numPlayers - 1)
+      : dp + np * (numPlayers - 2)
+  }
+
+  return { ...result, han: augHan, yaku: augYaku, ten, outgoingTen }
 }

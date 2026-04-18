@@ -67,7 +67,8 @@ export default function TextNotationInput({ tiles, onParse }) {
       <p className="text-xs text-slate-600">
         Format: values then suit — <span className="text-slate-500">123m 456p 789s 11z</span>
         &ensp;·&ensp;Red fives: <span className="text-slate-500">0m 0p 0s</span>
-        &ensp;·&ensp;Honors (z): 1–7
+        &ensp;·&ensp;Winds: <span className="text-slate-500">E S W N</span>
+        &ensp;·&ensp;Dragons: <span className="text-slate-500">B G R</span>
       </p>
     </div>
   )
