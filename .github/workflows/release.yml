@@ -154,8 +154,54 @@ jobs:
             src-tauri/gen/android/app/build/outputs/apk/universal/release/riichi-companion.apk
             src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
 
+  build-android-aab:
+    runs-on: ubuntu-22.04
+    needs: [preflight]
+    if: always() && (needs.preflight.result == 'success' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install NDK
+        run: echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;29.0.14206865"
+      - uses: dtolnay/rust-toolchain@stable
+      - run: rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+      - run: npm ci
+      - run: npx tauri android init
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/29.0.14206865
+      - name: Build AAB
+        run: npm run tauri:android:aab
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/29.0.14206865
+      - name: Sign AAB
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 -d > /tmp/release.keystore
+          AAB=$(find src-tauri/gen/android/app/build/outputs/bundle -name '*.aab' | head -n1)
+          jarsigner \
+            -verbose \
+            -sigalg SHA256withRSA \
+            -digestalg SHA-256 \
+            -keystore /tmp/release.keystore \
+            -storepass "${{ secrets.ANDROID_STORE_PASSWORD }}" \
+            -keypass "${{ secrets.ANDROID_KEY_PASSWORD }}" \
+            "$AAB" \
+            "${{ secrets.ANDROID_KEY_ALIAS }}"
+          cp "$AAB" src-tauri/gen/android/app/build/outputs/bundle/riichi-companion.aab
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-aab
+          path: src-tauri/gen/android/app/build/outputs/bundle/riichi-companion.aab
+          if-no-files-found: ignore
+
   publish-release:
-    needs: [build-linux, build-windows, build-android]
+    needs: [build-linux, build-windows, build-android, build-android-aab]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-22.04
     environment: release
@@ -174,6 +220,12 @@ jobs:
         with:
           name: android-bundles
           path: artifacts/android
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-aab
+          path: artifacts/android
+          # AAB is only produced on non-PR runs; tolerate absence on PRs
+        continue-on-error: true
       - name: Generate checksums
         run: |
           find artifacts -type f -print0 | xargs -0 sha256sum > artifacts/SHA256SUMS.txt

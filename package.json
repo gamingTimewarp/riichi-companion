@@ -11,6 +11,7 @@
     "tauri": "tauri",
     "tauri:build": "APPIMAGE_EXTRACT_AND_RUN=1 tauri build",
     "tauri:android": "tauri android build --apk",
+    "tauri:android:aab": "tauri android build",
     "test": "node --test"
   },
   "dependencies": {
